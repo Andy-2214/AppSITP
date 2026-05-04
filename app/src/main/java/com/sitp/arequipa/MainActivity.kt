@@ -12,6 +12,7 @@ import com.sitp.arequipa.ui.auth.ForgotPasswordScreen
 import com.sitp.arequipa.ui.map.MapScreen
 import com.sitp.arequipa.ui.theme.SistemaTransporteArequipaTheme
 import com.sitp.arequipa.viewmodel.AuthViewModel
+import com.sitp.arequipa.ui.perfil.PerfilScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +51,13 @@ fun AppNavigation() {
             onLogout = {
                 authViewModel.logout()
                 currentScreen = "login"
+            },
+            onPerfil = {
+                currentScreen = "perfil"
             }
+        )
+        "perfil" -> PerfilScreen(
+            onBack = { currentScreen = "map" }
         )
     }
 }

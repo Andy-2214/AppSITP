@@ -29,7 +29,14 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun register(nombre: String, email: String, password: String) {
+    fun register(
+        nombre: String,
+        email: String,
+        password: String,
+        genero: String,
+        edad: Int,
+        distrito: String
+    ) {
         viewModelScope.launch {
             try {
                 _authState.value = AuthState.Loading
@@ -39,6 +46,9 @@ class AuthViewModel : ViewModel() {
                 val usuario = hashMapOf(
                     "nombre" to nombre,
                     "email" to email,
+                    "genero" to genero,
+                    "edad" to edad,
+                    "distrito" to distrito,
                     "fechaRegistro" to com.google.firebase.Timestamp.now()
                 )
                 db.collection("usuarios")
@@ -46,13 +56,15 @@ class AuthViewModel : ViewModel() {
                     .set(usuario)
                     .await()
 
+                // Enviar email de verificación
+                result.user!!.sendEmailVerification().await()
+
                 _authState.value = AuthState.Success
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Error al registrarse: ${e.message}")
             }
         }
     }
-
     fun recuperarPassword(email: String) {
         viewModelScope.launch {
             try {
