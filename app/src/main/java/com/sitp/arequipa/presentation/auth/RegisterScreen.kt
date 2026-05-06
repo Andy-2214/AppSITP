@@ -1,4 +1,4 @@
-package com.sitp.arequipa.ui.auth
+package com.sitp.arequipa.presentation.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,16 +9,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sitp.arequipa.presentation.auth.AuthState
-import com.sitp.arequipa.presentation.auth.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onGoToLogin: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel
 ) {
     var nombre by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -52,7 +49,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Nombre
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
@@ -62,7 +58,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Email
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
@@ -72,7 +67,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Contraseña
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
@@ -83,7 +77,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Género (obligatorio)
         ExposedDropdownMenuBox(
             expanded = expandedGenero,
             onExpandedChange = { expandedGenero = it }
@@ -116,7 +109,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Edad (opcional)
         OutlinedTextField(
             value = edad,
             onValueChange = { if (it.all { c -> c.isDigit() }) edad = it },
@@ -126,7 +118,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Distrito (opcional)
         OutlinedTextField(
             value = distrito,
             onValueChange = { distrito = it },

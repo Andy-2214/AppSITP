@@ -6,13 +6,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sitp.arequipa.ui.auth.LoginScreen
-import com.sitp.arequipa.ui.auth.RegisterScreen
-import com.sitp.arequipa.ui.auth.ForgotPasswordScreen
-import com.sitp.arequipa.ui.map.MapScreen
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.sitp.arequipa.di.AppModule
+import com.sitp.arequipa.presentation.auth.AuthViewModel
+import com.sitp.arequipa.presentation.auth.LoginScreen
+import com.sitp.arequipa.presentation.auth.RegisterScreen
+import com.sitp.arequipa.presentation.auth.ForgotPasswordScreen
+import com.sitp.arequipa.presentation.map.MapViewModel
+import com.sitp.arequipa.presentation.map.MapScreen
+import com.sitp.arequipa.presentation.perfil.PerfilViewModel
+import com.sitp.arequipa.presentation.perfil.PerfilScreen
 import com.sitp.arequipa.ui.theme.SistemaTransporteArequipaTheme
-import com.sitp.arequipa.viewmodel.AuthViewModel
-import com.sitp.arequipa.ui.perfil.PerfilScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,9 +31,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** Factory genérico para ViewModels con dependencias manuales */
+inline fun <reified T : ViewModel> viewModelFactory(crossinline create: () -> T): ViewModelProvider.Factory =
+    object : ViewModelProvider.Factory {
+        override fun <V : ViewModel> create(modelClass: Class<V>): V {
+            @Suppress("UNCHECKED_CAST")
+            return create() as V
+        }
+    }
+
 @Composable
 fun AppNavigation() {
-    val authViewModel: AuthViewModel = viewModel()
+    val authViewModel: AuthViewModel = viewModel(
+        factory = viewModelFactory { AppModule.provideAuthViewModel() }
+    )
+    val mapViewModel: MapViewModel = viewModel(
+        factory = viewModelFactory { AppModule.provideMapViewModel() }
+    )
+    val perfilViewModel: PerfilViewModel = viewModel(
+        factory = viewModelFactory { AppModule.providePerfilViewModel() }
+    )
+
     var currentScreen by remember { mutableStateOf("login") }
 
     when (currentScreen) {
@@ -52,12 +75,12 @@ fun AppNavigation() {
                 authViewModel.logout()
                 currentScreen = "login"
             },
-            onPerfil = {
-                currentScreen = "perfil"
-            }
+            onPerfil = { currentScreen = "perfil" },
+            mapViewModel = mapViewModel
         )
         "perfil" -> PerfilScreen(
-            onBack = { currentScreen = "map" }
+            onBack = { currentScreen = "map" },
+            perfilViewModel = perfilViewModel
         )
     }
 }

@@ -1,22 +1,30 @@
-package com.sitp.arequipa.ui.auth
+package com.sitp.arequipa.presentation.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sitp.arequipa.presentation.auth.AuthState
-import com.sitp.arequipa.presentation.auth.AuthViewModel
 
 @Composable
-fun ForgotPasswordScreen(
-    onBack: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+fun LoginScreen(
+    onLoginSuccess: () -> Unit,
+    onGoToRegister: () -> Unit,
+    onGoToForgotPassword: () -> Unit,
+    authViewModel: AuthViewModel
 ) {
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
     val authState by authViewModel.authState.collectAsState()
+
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Success) {
+            onLoginSuccess()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -26,15 +34,8 @@ fun ForgotPasswordScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "🔑 Recuperar contraseña",
+            text = "🚌 Transporte Arequipa",
             style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.",
-            style = MaterialTheme.typography.bodyMedium
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -46,38 +47,47 @@ fun ForgotPasswordScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Contraseña") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        when (authState) {
-            is AuthState.Error -> Text(
+        if (authState is AuthState.Error) {
+            Text(
                 text = (authState as AuthState.Error).message,
                 color = MaterialTheme.colorScheme.error
             )
-            is AuthState.PasswordResetSent -> Text(
-                text = "✅ Email enviado, revisa tu bandeja de entrada",
-                color = MaterialTheme.colorScheme.primary
-            )
-            else -> {}
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = { authViewModel.recuperarPassword(email) },
+            onClick = { authViewModel.login(email, password) },
             modifier = Modifier.fillMaxWidth(),
             enabled = authState !is AuthState.Loading
         ) {
             if (authState is AuthState.Loading) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
-                Text("Enviar email")
+                Text("Iniciar sesión")
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(onClick = onBack) {
-            Text("Volver al login")
+        TextButton(onClick = onGoToRegister) {
+            Text("¿No tienes cuenta? Regístrate")
+        }
+
+        TextButton(onClick = onGoToForgotPassword) {
+            Text("¿Olvidaste tu contraseña?")
         }
     }
 }

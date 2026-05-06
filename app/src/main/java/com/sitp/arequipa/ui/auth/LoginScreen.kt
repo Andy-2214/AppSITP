@@ -8,8 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sitp.arequipa.viewmodel.AuthState
-import com.sitp.arequipa.viewmodel.AuthViewModel
+import com.sitp.arequipa.presentation.auth.AuthState
+import com.sitp.arequipa.presentation.auth.AuthViewModel
 
 @Composable
 fun LoginScreen(

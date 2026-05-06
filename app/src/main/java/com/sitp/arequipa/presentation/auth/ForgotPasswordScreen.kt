@@ -1,4 +1,4 @@
-package com.sitp.arequipa.ui.auth
+package com.sitp.arequipa.presentation.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -6,14 +6,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sitp.arequipa.presentation.auth.AuthState
-import com.sitp.arequipa.presentation.auth.AuthViewModel
 
 @Composable
 fun ForgotPasswordScreen(
     onBack: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel
 ) {
     var email by remember { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
