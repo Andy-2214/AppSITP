@@ -418,7 +418,7 @@ fun MapScreen(
                     },
                     onRutaEncontrada = { codigos ->
                         rutasResaltadas = codigos.toSet()
-                        mostrarBusqueda = false
+
                     }
                 )
             }

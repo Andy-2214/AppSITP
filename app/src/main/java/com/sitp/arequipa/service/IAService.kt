@@ -32,25 +32,36 @@ class IAService {
         }
 
         val promptCompleto = """
-            $promptBase
-            
-            Rutas disponibles:
-            $rutasTexto
-            
-            Usuario quiere ir de: $origen
-            Destino: $destino
-            Preferencia: $preferencia
-            
-            ${if (preferencia == "tiempo")
-            "Recomienda la ruta más RÁPIDA aunque requiera más transbordos."
+    $promptBase
+    
+    INFORMACIÓN IMPORTANTE:
+    - Todas las combis en Arequipa cobran S/1.30 por pasaje
+    - Si el usuario necesita transbordar, cada combi adicional cuesta S/1.30
+    - Las respuestas deben ser cortas no tan largas
+    
+    Rutas disponibles (con sus avenidas de recorrido):
+    $rutasTexto
+    
+    El usuario está en: $origen
+    Quiere llegar a: $destino
+    Preferencia: $preferencia
+    
+    INSTRUCCIONES PARA RECOMENDAR:
+    - Analiza qué rutas pasan cerca del origen Y del destino
+    - Una ruta "pasa cerca" si sus avenidas están en la misma zona
+    - Si ninguna ruta va directo, busca combinaciones con transbordo
+    - ${if (preferencia == "tiempo")
+            "Prioriza MENOS tiempo aunque haya más transbordos (más pasajes)"
         else
-            "Recomienda la ruta con MENOS transbordos para ahorrar dinero."}
-            
-            Responde en este formato exacto:
-            RUTAS: [código1, código2]
-            INSTRUCCIONES: paso a paso
-            ESTIMACION: tiempo aproximado y costo
-        """.trimIndent()
+            "Prioriza MENOS transbordos para ahorrar dinero (S/1.30 por combi)"}
+    
+    Responde EXACTAMENTE en este formato:
+    RUTAS: [código1, código2]
+    INSTRUCCIONES:
+    1. [paso 1]
+    2. [paso 2]
+    ESTIMACION: X minutos, S/X.XX (X pasaje(s) x S/1.30)
+""".trimIndent()
 
         return llamarGroq(promptCompleto)
     }
@@ -74,7 +85,7 @@ class IAService {
                             put("content", prompt)
                         })
                     })
-                    put("max_tokens", 500)
+                    put("max_tokens", 800)
                 }.toString()
 
                 OutputStreamWriter(connection.outputStream).use { it.write(body) }
