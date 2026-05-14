@@ -68,6 +68,16 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+        if (authState is AuthState.Error) {
+            val errorMsg = (authState as AuthState.Error).message
+            Text(text = errorMsg, color = MaterialTheme.colorScheme.error)
+
+            if (errorMsg.contains("verificar")) {
+                TextButton(onClick = { authViewModel.reenviarVerificacion(email) }) {
+                    Text("Reenviar email de verificación")
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

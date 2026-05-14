@@ -33,6 +33,7 @@ fun RegisterScreen(
 
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
+            authViewModel.resetState()
             onRegisterSuccess()
         }
     }

@@ -31,6 +31,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import android.annotation.SuppressLint
+import androidx.compose.material.icons.filled.Search
+import com.google.maps.android.compose.MapType
+import com.sitp.arequipa.ui.busqueda.BusquedaSheet
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 
 data class RutaMapa(
     val id: String = "",
@@ -68,7 +72,12 @@ fun MapScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
+    var mapType by remember { mutableStateOf(MapType.NORMAL) }
+    var mostrarBusqueda by remember { mutableStateOf(false) }
+    var rutasResaltadas by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var origenLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var destinoLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var modoSeleccion by remember { mutableStateOf<String?>(null) }
     val locationPermission = rememberPermissionState(
         Manifest.permission.ACCESS_FINE_LOCATION
     )
@@ -91,9 +100,17 @@ fun MapScreen(
                 }
             }
     }
-    LaunchedEffect(Unit) {
-        if (!locationPermission.status.isGranted) {
-            locationPermission.launchPermissionRequest()
+    LaunchedEffect(locationPermission.status.isGranted) {
+        if (locationPermission.status.isGranted) {
+            obtenerUbicacion(context) { location ->
+                scope.launch {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(location.latitude, location.longitude), 15f
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -119,6 +136,18 @@ fun MapScreen(
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
                 }
+
+                Divider()
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    label = { Text("Buscar ruta") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        mostrarBusqueda = true
+                    }
+                )
 
                 Divider()
 
@@ -226,8 +255,24 @@ fun MapScreen(
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
+                onMapClick = { latLng ->
+                    when (modoSeleccion) {
+                        "origen" -> {
+                            origenLatLng = latLng
+                            modoSeleccion = null
+                            mostrarBusqueda = true
+                        }
+                        "destino" -> {
+                            destinoLatLng = latLng
+                            modoSeleccion = null
+                            mostrarBusqueda = true
+                        }
+                        else -> {} // no hace nada si no hay modo activo
+                    }
+                },
                 properties = MapProperties(
                     isMyLocationEnabled = locationPermission.status.isGranted,
+                    mapType = mapType,
                     latLngBoundsForCameraTarget = com.google.android.gms.maps.model.LatLngBounds(
                         LatLng(-16.5500, -71.6500),
                         LatLng(-16.2500, -71.4000)
@@ -241,19 +286,59 @@ fun MapScreen(
                     """)
                 )
             ) {
-                rutas.filter { rutasVisibles.contains(it.id) }.forEach { ruta ->
-                    val puntos = ruta.coordenadas.mapNotNull { coord ->
-                        val lat = coord["lat"] ?: return@mapNotNull null
-                        val lng = coord["lng"] ?: return@mapNotNull null
-                        LatLng(lat, lng)
+                origenLatLng?.let {
+                    Marker(
+                        state = MarkerState(position = it),
+                        title = "Origen",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                    )
+                }
+
+                destinoLatLng?.let {
+                    Marker(
+                        state = MarkerState(position = it),
+                        title = "Destino",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                    )
+                }
+
+                rutas.filter { rutasVisibles.contains(it.id) || rutasResaltadas.contains(it.codigo) }
+                    .forEach { ruta ->
+                        val puntos = ruta.coordenadas.mapNotNull { coord ->
+                            val lat = coord["lat"] ?: return@mapNotNull null
+                            val lng = coord["lng"] ?: return@mapNotNull null
+                            LatLng(lat, lng)
+                        }
+                        if (puntos.isNotEmpty()) {
+                            Polyline(
+                                points = puntos,
+                                color = parseColor(ruta.color),
+                                width = if (rutasResaltadas.contains(ruta.codigo)) 14f else 8f
+                            )
+                        }
                     }
-                    if (puntos.isNotEmpty()) {
-                        Polyline(
-                            points = puntos,
-                            color = parseColor(ruta.color),
-                            width = 8f
-                        )
-                    }
+            }
+
+            if (modoSeleccion != null) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (modoSeleccion == "origen")
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = if (modoSeleccion == "origen")
+                            "📍 Toca el mapa para marcar el ORIGEN"
+                        else
+                            "🏁 Toca el mapa para marcar el DESTINO",
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
 
@@ -264,6 +349,31 @@ fun MapScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                FloatingActionButton(
+                    onClick = {
+                        mapType = when (mapType) {
+                            MapType.NORMAL -> MapType.SATELLITE
+                            MapType.SATELLITE -> MapType.HYBRID
+                            MapType.HYBRID -> MapType.TERRAIN
+                            MapType.TERRAIN -> MapType.NORMAL
+                            else -> MapType.NORMAL
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = when (mapType) {
+                            MapType.NORMAL -> "🗺️"
+                            MapType.SATELLITE -> "🛰️"
+                            MapType.HYBRID -> "🌍"
+                            MapType.TERRAIN -> "🏔️"
+                            else -> "🗺️"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+
+
                 // Botón menú
                 FloatingActionButton(
                     onClick = { scope.launch { drawerState.open() } }
@@ -292,6 +402,27 @@ fun MapScreen(
                     Icon(Icons.Default.LocationOn, contentDescription = "Mi ubicación")
                 }
             }
+
+            if (mostrarBusqueda) {
+                BusquedaSheet(
+                    origenLatLng = origenLatLng,
+                    destinoLatLng = destinoLatLng,
+                    onDismiss = { mostrarBusqueda = false },
+                    onSeleccionarOrigen = {
+                        mostrarBusqueda = false
+                        modoSeleccion = "origen"
+                    },
+                    onSeleccionarDestino = {
+                        mostrarBusqueda = false
+                        modoSeleccion = "destino"
+                    },
+                    onRutaEncontrada = { codigos ->
+                        rutasResaltadas = codigos.toSet()
+                        mostrarBusqueda = false
+                    }
+                )
+            }
+
         }
     }
 }

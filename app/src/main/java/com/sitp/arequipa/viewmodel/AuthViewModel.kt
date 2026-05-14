@@ -21,10 +21,27 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 _authState.value = AuthState.Loading
-                auth.signInWithEmailAndPassword(email, password).await()
+                val result = auth.signInWithEmailAndPassword(email, password).await()
+                println("DEBUG isEmailVerified: ${result.user?.isEmailVerified}")
+                if (result.user?.isEmailVerified == false) {
+                    auth.signOut()
+                    _authState.value = AuthState.Error(
+                        "Debes verificar tu email antes de ingresar. Revisa tu bandeja de entrada."
+                    )
+                    return@launch
+                }
                 _authState.value = AuthState.Success
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Email o contraseña incorrectos")
+                val mensaje = when {
+                    e.message?.contains("no user record") == true ->
+                        "No existe una cuenta con este email."
+                    e.message?.contains("password is invalid") == true ->
+                        "Contraseña incorrecta."
+                    e.message?.contains("blocked") == true ->
+                        "Demasiados intentos. Intenta más tarde."
+                    else -> "Email o contraseña incorrectos."
+                }
+                _authState.value = AuthState.Error(mensaje)
             }
         }
     }
@@ -42,7 +59,6 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Loading
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
 
-                // Guardar perfil en Firestore
                 val usuario = hashMapOf(
                     "nombre" to nombre,
                     "email" to email,
@@ -56,15 +72,23 @@ class AuthViewModel : ViewModel() {
                     .set(usuario)
                     .await()
 
-                // Enviar email de verificación
                 result.user!!.sendEmailVerification().await()
-
                 _authState.value = AuthState.Success
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Error al registrarse: ${e.message}")
+                val mensaje = when {
+                    e.message?.contains("email address is already in use") == true ->
+                        "Este email ya está registrado. Inicia sesión."
+                    e.message?.contains("badly formatted") == true ->
+                        "El formato del email no es válido."
+                    e.message?.contains("weak-password") == true ->
+                        "La contraseña debe tener al menos 6 caracteres."
+                    else -> "Error al registrarse: ${e.message}"
+                }
+                _authState.value = AuthState.Error(mensaje)
             }
         }
     }
+
     fun recuperarPassword(email: String) {
         viewModelScope.launch {
             try {
@@ -78,6 +102,21 @@ class AuthViewModel : ViewModel() {
 
     fun logout() {
         auth.signOut()
+        _authState.value = AuthState.Idle
+    }
+
+    fun reenviarVerificacion(email: String) {
+        viewModelScope.launch {
+            try {
+                auth.currentUser?.sendEmailVerification()?.await()
+                _authState.value = AuthState.Error("Email de verificación reenviado ✅")
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Error al reenviar el email")
+            }
+        }
+    }
+
+    fun resetState() {
         _authState.value = AuthState.Idle
     }
 }
