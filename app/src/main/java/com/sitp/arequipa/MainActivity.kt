@@ -11,9 +11,7 @@ import com.sitp.arequipa.ui.auth.RegisterScreen
 import com.sitp.arequipa.ui.auth.ForgotPasswordScreen
 import com.sitp.arequipa.ui.map.MapScreen
 import com.sitp.arequipa.ui.theme.SistemaTransporteArequipaTheme
-import com.sitp.arequipa.viewmodel.AuthViewModel
-import com.sitp.arequipa.ui.perfil.PerfilScreen
-import com.sitp.arequipa.ui.historial.HistorialScreen
+import com.sitp.arequipa.viewmodel.AuthViewModel 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,13 +57,12 @@ fun AppNavigation() {
                     authViewModel.logout()
                     currentScreen = "login"
                 },
-                onPerfil = { currentScreen = "perfil" },
-                onHistorial = { currentScreen = "historial" },
+                onPerfil = { /* Manejado internamente por el nav inferior */ },
+                onHistorial = { /* Manejado internamente por el nav inferior */ },
                 origenInicial = origenRepetir,
                 destinoInicial = destinoRepetir,
                 preferenciaInicial = preferenciaRepetir
             )
-            // Limpiar después de usar para que no se repita
             LaunchedEffect(currentScreen) {
                 if (currentScreen == "map") {
                     origenRepetir = null
@@ -74,17 +71,5 @@ fun AppNavigation() {
                 }
             }
         }
-        "perfil" -> PerfilScreen(
-            onBack = { currentScreen = "map" }
-        )
-        "historial" -> HistorialScreen(
-            onBack = { currentScreen = "map" },
-            onRepetirBusqueda = { origen, destino, preferencia ->
-                origenRepetir = origen
-                destinoRepetir = destino
-                preferenciaRepetir = preferencia
-                currentScreen = "map"
-            }
-        )
     }
 }
