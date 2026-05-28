@@ -128,12 +128,41 @@ fun RegisterScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Distrito (opcional)
-        OutlinedTextField(
-            value = distrito,
-            onValueChange = { distrito = it },
-            label = { Text("Distrito (opcional)") },
-            modifier = Modifier.fillMaxWidth()
+        var expandedDistrito by remember { mutableStateOf(false) }
+        val distritos = listOf(
+            "Arequipa (Cercado)", "Alto Selva Alegre", "Cayma",
+            "Cerro Colorado", "Jacobo Hunter", "José Luis Bustamante y Rivero",
+            "Mariano Melgar", "Miraflores", "Paucarpata",
+            "Sachaca", "Socabaya", "Tiabaya", "Uchumayo", "Yanahuara"
         )
+
+        ExposedDropdownMenuBox(
+            expanded = expandedDistrito,
+            onExpandedChange = { expandedDistrito = it }
+        ) {
+            OutlinedTextField(
+                value = distrito,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Distrito (opcional)") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistrito) },
+                modifier = Modifier.fillMaxWidth().menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expandedDistrito,
+                onDismissRequest = { expandedDistrito = false }
+            ) {
+                distritos.forEach { opcion ->
+                    DropdownMenuItem(
+                        text = { Text(opcion) },
+                        onClick = {
+                            distrito = opcion
+                            expandedDistrito = false
+                        }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
