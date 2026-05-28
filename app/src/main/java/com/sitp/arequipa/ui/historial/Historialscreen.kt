@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
@@ -24,14 +23,18 @@ import java.util.*
 fun HistorialScreen(
     onBack: () -> Unit,
     onRepetirBusqueda: (String, String, String) -> Unit = { _, _, _ -> },
-    historialViewModel: HistorialViewModel = viewModel()
+    historialViewModel: HistorialViewModel = viewModel(),
+    externalSnackbarHostState: SnackbarHostState? = null
 ) {
     val historial by historialViewModel.historial.collectAsState()
     val favoritos by historialViewModel.favoritos.collectAsState()
     val loading by historialViewModel.loading.collectAsState()
     val favoritoAutoGuardado by historialViewModel.favoritoAutoGuardado.collectAsState()
     var tabSeleccionado by remember { mutableStateOf(0) }
-    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Usa el snackbar del Scaffold padre si está disponible, si no crea uno local
+    val localSnackbarHostState = remember { SnackbarHostState() }
+    val snackbarHostState = externalSnackbarHostState ?: localSnackbarHostState
 
     LaunchedEffect(Unit) {
         historialViewModel.cargarHistorial()
@@ -45,50 +48,36 @@ fun HistorialScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Mi actividad") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
-                    }
-                }
+    Column(modifier = Modifier.fillMaxSize()) {
+        TabRow(selectedTabIndex = tabSeleccionado) {
+            Tab(
+                selected = tabSeleccionado == 0,
+                onClick = { tabSeleccionado = 0 },
+                text = { Text("📋 Historial") }
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = tabSeleccionado) {
-                Tab(
-                    selected = tabSeleccionado == 0,
-                    onClick = { tabSeleccionado = 0 },
-                    text = { Text("📋 Historial") }
-                )
-                Tab(
-                    selected = tabSeleccionado == 1,
-                    onClick = { tabSeleccionado = 1 },
-                    text = { Text("⭐ Favoritos") }
-                )
-            }
+            Tab(
+                selected = tabSeleccionado == 1,
+                onClick = { tabSeleccionado = 1 },
+                text = { Text("⭐ Favoritos") }
+            )
+        }
 
-            if (loading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                when (tabSeleccionado) {
-                    0 -> HistorialTab(
-                        historial = historial,
-                        onEliminar = { historialViewModel.eliminarBusqueda(it) },
-                        onRepetir = onRepetirBusqueda
-                    )
-                    1 -> FavoritosTab(
-                        favoritos = favoritos,
-                        onEliminar = { historialViewModel.eliminarFavorito(it) },
-                        onRepetir = onRepetirBusqueda
-                    )
-                }
+        if (loading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            when (tabSeleccionado) {
+                0 -> HistorialTab(
+                    historial = historial,
+                    onEliminar = { historialViewModel.eliminarBusqueda(it) },
+                    onRepetir = onRepetirBusqueda
+                )
+                1 -> FavoritosTab(
+                    favoritos = favoritos,
+                    onEliminar = { historialViewModel.eliminarFavorito(it) },
+                    onRepetir = onRepetirBusqueda
+                )
             }
         }
     }
@@ -217,7 +206,8 @@ fun FavoritoCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Favorite, contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(favorito.nombre, style = MaterialTheme.typography.titleSmall)
                     }
