@@ -24,6 +24,7 @@ android {
         versionName = "1.0"
         buildConfigField("String", "GROQ_API_KEY", "\"${project.findProperty("GROQ_API_KEY")}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GOOGLE_GEOCODING_API_KEY", "\"${project.findProperty("GOOGLE_GEOCODING_API_KEY")}\"")
     }
 
     buildTypes {
@@ -71,6 +72,7 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.aallam.openai:openai-client:3.7.0")
     implementation("io.ktor:ktor-client-android:2.3.7")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

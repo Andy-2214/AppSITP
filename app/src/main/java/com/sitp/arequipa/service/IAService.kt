@@ -17,7 +17,8 @@ class IAService {
         origen: String,
         destino: String,
         preferencia: String,
-        rutas: List<Map<String, Any>>
+        rutas: List<Map<String, Any>>,
+        consultaExtra: String = ""
     ): String {
         val promptDoc = db.collection("prompt_ia")
             .document("config")
@@ -31,36 +32,32 @@ class IAService {
                     "Empresa: ${ruta["empresa"]}, Avenidas: ${ruta["avenidas"]}"
         }
 
+        val instruccionPreferencia = when (preferencia) {
+            "tiempo"      -> "Prioriza MENOS tiempo de viaje aunque haya más transbordos"
+            "costo"       -> "Prioriza MENOS transbordos para ahorrar dinero (S/1.30 por combi)"
+            "transbordos" -> "Prioriza la ruta con el MENOR número de transbordos posible"
+            else          -> "Prioriza MENOS tiempo de viaje"
+        }
+
+        val seccionExtra = if (consultaExtra.isNotBlank()) {
+            "\nInformación adicional del usuario: $consultaExtra"
+        } else ""
+
         val promptCompleto = """
-    $promptBase
-    
-    INFORMACIÓN IMPORTANTE:
-    - Todas las combis en Arequipa cobran S/1.30 por pasaje
-    - Si el usuario necesita transbordar, cada combi adicional cuesta S/1.30
-    - Las respuestas deben ser cortas no tan largas
-    
-    Rutas disponibles (con sus avenidas de recorrido):
-    $rutasTexto
-    
-    El usuario está en: $origen
-    Quiere llegar a: $destino
-    Preferencia: $preferencia
-    
-    INSTRUCCIONES PARA RECOMENDAR:
-    - Analiza qué rutas pasan cerca del origen Y del destino
-    - Una ruta "pasa cerca" si sus avenidas están en la misma zona
-    - Si ninguna ruta va directo, busca combinaciones con transbordo
-    - ${if (preferencia == "tiempo")
-            "Prioriza MENOS tiempo aunque haya más transbordos (más pasajes)"
-        else
-            "Prioriza MENOS transbordos para ahorrar dinero (S/1.30 por combi)"}
-    
-    Responde EXACTAMENTE en este formato:
-    RUTAS: [código1, código2]
-    INSTRUCCIONES:
-    1. [paso 1]
-    2. [paso 2]
-    ESTIMACION: X minutos, S/X.XX (X pasaje(s) x S/1.30)
+$promptBase
+
+Rutas disponibles:
+$rutasTexto
+
+Usuario está en: $origen
+Quiere llegar a: $destino
+Preferencia: $instruccionPreferencia
+$seccionExtra
+
+Reglas adicionales:
+- Todas las combis cobran S/1.30 por pasaje
+- NUNCA sugieras taxi, mototaxi u otro medio que no sea combi/bus de la lista
+- Si no es posible llegar con las rutas disponibles, dilo claramente
 """.trimIndent()
 
         return llamarGroq(promptCompleto)
@@ -78,7 +75,7 @@ class IAService {
                 connection.doOutput = true
 
                 val body = JSONObject().apply {
-                    put("model", "llama-3.1-8b-instant")
+                    put("model", "llama-3.3-70b-versatile")
                     put("messages", JSONArray().apply {
                         put(JSONObject().apply {
                             put("role", "user")
@@ -100,6 +97,8 @@ class IAService {
                         .getJSONObject(0)
                         .getJSONObject("message")
                         .getString("content")
+                } else if (responseCode == 429) {
+                    "La IA está saturada, espera unos segundos e intenta de nuevo."
                 } else {
                     val error = connection.errorStream?.bufferedReader()?.readText()
                     println("DEBUG Groq error: $error")
@@ -115,20 +114,36 @@ class IAService {
     suspend fun coordenadasANombre(lat: Double, lng: Double): String {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json"
-                val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                val url = "https://nominatim.openstreetmap.org/reverse" +
+                        "?lat=$lat&lon=$lng&format=json&zoom=16&addressdetails=1"
+                val connection = java.net.URL(url).openConnection()
+                        as java.net.HttpURLConnection
                 connection.setRequestProperty("User-Agent", "SistemaTransporteArequipa/1.0")
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 val response = connection.inputStream.bufferedReader().readText()
-                println("DEBUG nominatim response: $response")
                 val json = org.json.JSONObject(response)
                 val address = json.getJSONObject("address")
-                address.optString("suburb")
+
+                // Construir nombre compuesto más específico
+                val barrio = address.optString("suburb")
                     .ifEmpty { address.optString("neighbourhood") }
-                    .ifEmpty { address.optString("road") }
+                    .ifEmpty { address.optString("quarter") }
                     .ifEmpty { address.optString("city_district") }
-                    .ifEmpty { "zona de Arequipa" }
+
+                val via = address.optString("road")
+                    .ifEmpty { address.optString("pedestrian") }
+
+                val resultado = when {
+                    barrio.isNotEmpty() && via.isNotEmpty() -> "$via, $barrio"
+                    barrio.isNotEmpty() -> barrio
+                    via.isNotEmpty() -> via
+                    else -> "zona de Arequipa"
+                }
+
+                println("DEBUG nominatim resultado: $resultado")
+                resultado
+
             } catch (e: Exception) {
                 println("DEBUG nominatim error: ${e.message}")
                 "zona de Arequipa"

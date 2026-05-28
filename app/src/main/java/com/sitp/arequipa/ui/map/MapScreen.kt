@@ -7,11 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,9 +33,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import android.annotation.SuppressLint
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.google.maps.android.compose.MapType
 import com.sitp.arequipa.ui.busqueda.BusquedaSheet
+import com.sitp.arequipa.ui.comentarios.ComentariosSheet
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 
 data class RutaMapa(
@@ -42,8 +47,10 @@ data class RutaMapa(
     val codigo: String = "",
     val empresa: String = "",
     val color: String = "#FF0000",
+    val avenidas: String = "",
     val coordenadas: List<Map<String, Double>> = emptyList()
 )
+
 @SuppressLint("MissingPermission")
 fun obtenerUbicacion(
     context: android.content.Context,
@@ -55,11 +62,37 @@ fun obtenerUbicacion(
             location?.let { onUbicacion(it) }
         }
 }
+
+fun puntoEnRuta(click: LatLng, puntos: List<LatLng>, tolerancia: Double = 0.002): Boolean {
+    for (i in 0 until puntos.size - 1) {
+        val lat = (puntos[i].latitude + puntos[i + 1].latitude) / 2
+        val lng = (puntos[i].longitude + puntos[i + 1].longitude) / 2
+        if (Math.abs(click.latitude - lat) < tolerancia &&
+            Math.abs(click.longitude - lng) < tolerancia
+        ) return true
+    }
+    return false
+}
+
+// Convierte un string "lat, lng" a LatLng
+fun String.toLatLng(): LatLng? {
+    return try {
+        val parts = this.split(",").map { it.trim() }
+        LatLng(parts[0].toDouble(), parts[1].toDouble())
+    } catch (e: Exception) {
+        null
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MapScreen(
     onLogout: () -> Unit,
-    onPerfil: () -> Unit
+    onPerfil: () -> Unit,
+    onHistorial: () -> Unit,
+    origenInicial: String? = null,      // ← nuevo
+    destinoInicial: String? = null,     // ← nuevo
+    preferenciaInicial: String? = null  // ← nuevo
 ) {
     val arequipa = LatLng(-16.4090, -71.5375)
     val cameraPositionState = rememberCameraPositionState {
@@ -73,16 +106,19 @@ fun MapScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var mapType by remember { mutableStateOf(MapType.NORMAL) }
-    var mostrarBusqueda by remember { mutableStateOf(false) }
     var rutasResaltadas by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var origenLatLng by remember { mutableStateOf<LatLng?>(null) }
-    var destinoLatLng by remember { mutableStateOf<LatLng?>(null) }
     var modoSeleccion by remember { mutableStateOf<String?>(null) }
-    val locationPermission = rememberPermissionState(
-        Manifest.permission.ACCESS_FINE_LOCATION
-    )
+    var rutaSeleccionada by remember { mutableStateOf<RutaMapa?>(null) }
+    var mostrarComentarios by remember { mutableStateOf(false) }
+    val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
-    // Cargar rutas desde Firebase
+    // ── Si viene de repetir búsqueda, pre-rellenar origen/destino ──
+    var origenLatLng by remember { mutableStateOf(origenInicial?.toLatLng()) }
+    var destinoLatLng by remember { mutableStateOf(destinoInicial?.toLatLng()) }
+    var mostrarBusqueda by remember {
+        mutableStateOf(origenInicial != null && destinoInicial != null)
+    }
+
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance()
             .collection("rutas")
@@ -95,11 +131,13 @@ fun MapScreen(
                         codigo = doc.getString("codigo") ?: "",
                         empresa = doc.getString("empresa") ?: "Sin empresa",
                         color = doc.getString("color") ?: "#FF0000",
+                        avenidas = doc.getString("avenidas") ?: "",
                         coordenadas = doc.get("coordenadas") as? List<Map<String, Double>> ?: emptyList()
                     )
                 }
             }
     }
+
     LaunchedEffect(locationPermission.status.isGranted) {
         if (locationPermission.status.isGranted) {
             obtenerUbicacion(context) { location ->
@@ -122,16 +160,11 @@ fun MapScreen(
         drawerContent = {
             ModalDrawerSheet {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "🚌 Transporte Arequipa",
-                        style = MaterialTheme.typography.headlineSmall
-                    )
+                    Text("🚌 Transporte Arequipa", style = MaterialTheme.typography.headlineSmall)
                     IconButton(onClick = { scope.launch { drawerState.close() } }) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
@@ -145,6 +178,7 @@ fun MapScreen(
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
+                        rutasResaltadas = emptySet()
                         mostrarBusqueda = true
                     }
                 )
@@ -163,6 +197,18 @@ fun MapScreen(
 
                 Divider()
 
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.History, contentDescription = null) },
+                    label = { Text("Mi historial y favoritos") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onHistorial()
+                    }
+                )
+
+                Divider()
+
                 Text(
                     text = "Rutas disponibles",
                     style = MaterialTheme.typography.titleMedium,
@@ -173,8 +219,7 @@ fun MapScreen(
                     rutasPorEmpresa.forEach { (empresa, rutasEmpresa) ->
                         item {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -185,16 +230,15 @@ fun MapScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 IconButton(onClick = {
-                                    empresasExpandidas = if (empresasExpandidas.contains(empresa))
-                                        empresasExpandidas - empresa
-                                    else
-                                        empresasExpandidas + empresa
+                                    empresasExpandidas =
+                                        if (empresasExpandidas.contains(empresa))
+                                            empresasExpandidas - empresa
+                                        else empresasExpandidas + empresa
                                 }) {
                                     Icon(
                                         if (empresasExpandidas.contains(empresa))
                                             Icons.Default.KeyboardArrowUp
-                                        else
-                                            Icons.Default.KeyboardArrowDown,
+                                        else Icons.Default.KeyboardArrowDown,
                                         contentDescription = null
                                     )
                                 }
@@ -204,27 +248,25 @@ fun MapScreen(
                         if (empresasExpandidas.contains(empresa)) {
                             items(rutasEmpresa) { ruta ->
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth()
                                         .padding(horizontal = 16.dp, vertical = 2.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Checkbox(
                                         checked = rutasVisibles.contains(ruta.id),
                                         onCheckedChange = { checked ->
-                                            rutasVisibles = if (checked)
-                                                rutasVisibles + ruta.id
-                                            else
-                                                rutasVisibles - ruta.id
+                                            rutasVisibles =
+                                                if (checked) rutasVisibles + ruta.id
+                                                else rutasVisibles - ruta.id
+                                            if (!checked) {
+                                                rutasResaltadas = rutasResaltadas - ruta.codigo
+                                            }
                                         }
                                     )
                                     Column {
+                                        Text(ruta.codigo, style = MaterialTheme.typography.bodyMedium)
                                         Text(
-                                            text = ruta.codigo,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        Text(
-                                            text = ruta.nombre,
+                                            ruta.nombre,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -267,7 +309,22 @@ fun MapScreen(
                             modoSeleccion = null
                             mostrarBusqueda = true
                         }
-                        else -> {} // no hace nada si no hay modo activo
+                        else -> {
+                            val rutaTocada = rutas
+                                .filter { ruta ->
+                                    rutasVisibles.contains(ruta.id) ||
+                                            rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) }
+                                }
+                                .firstOrNull { ruta ->
+                                    val puntos = ruta.coordenadas.mapNotNull { coord ->
+                                        val lat = coord["lat"] ?: return@mapNotNull null
+                                        val lng = coord["lng"] ?: return@mapNotNull null
+                                        LatLng(lat, lng)
+                                    }
+                                    puntoEnRuta(latLng, puntos)
+                                }
+                            rutaSeleccionada = rutaTocada
+                        }
                     }
                 },
                 properties = MapProperties(
@@ -302,7 +359,8 @@ fun MapScreen(
                     )
                 }
 
-                rutas.filter { rutasVisibles.contains(it.id) || rutasResaltadas.contains(it.codigo) }
+                // Rutas normales del drawer
+                rutas.filter { rutasVisibles.contains(it.id) }
                     .forEach { ruta ->
                         val puntos = ruta.coordenadas.mapNotNull { coord ->
                             val lat = coord["lat"] ?: return@mapNotNull null
@@ -310,78 +368,121 @@ fun MapScreen(
                             LatLng(lat, lng)
                         }
                         if (puntos.isNotEmpty()) {
-                            Polyline(
-                                points = puntos,
-                                color = parseColor(ruta.color),
-                                width = if (rutasResaltadas.contains(ruta.codigo)) 14f else 8f
-                            )
+                            Polyline(points = puntos, color = parseColor(ruta.color), width = 7f)
                         }
                     }
+
+                // Rutas resaltadas por IA — borde blanco + color oficial
+                rutas.filter { ruta ->
+                    rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) }
+                }.forEach { ruta ->
+                    val puntos = ruta.coordenadas.mapNotNull { coord ->
+                        val lat = coord["lat"] ?: return@mapNotNull null
+                        val lng = coord["lng"] ?: return@mapNotNull null
+                        LatLng(lat, lng)
+                    }
+                    if (puntos.isNotEmpty()) {
+                        Polyline(points = puntos, color = Color.White, width = 20f)
+                        Polyline(points = puntos, color = parseColor(ruta.color), width = 14f)
+                    }
+                }
+
+                // Dialog al tocar una ruta
+                rutaSeleccionada?.let { ruta ->
+                    AlertDialog(
+                        onDismissRequest = { rutaSeleccionada = null },
+                        title = { Text("🚌 ${ruta.codigo}") },
+                        text = {
+                            Column(
+                                modifier = Modifier.verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text("Nombre: ${ruta.nombre}")
+                                Text("Empresa: ${ruta.empresa}")
+                                if (ruta.avenidas.isNotEmpty()) {
+                                    Text("Avenidas: ${ruta.avenidas}")
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("Color:")
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .background(
+                                                parseColor(ruta.color),
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                                            )
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { mostrarComentarios = true }) {
+                                Text("💬 Ver opiniones")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { rutaSeleccionada = null }) {
+                                Text("Cerrar")
+                            }
+                        }
+                    )
+                }
             }
 
             if (modoSeleccion != null) {
                 Card(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(16.dp),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = if (modoSeleccion == "origen")
                             MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.errorContainer
                     )
                 ) {
                     Text(
                         text = if (modoSeleccion == "origen")
                             "📍 Toca el mapa para marcar el ORIGEN"
-                        else
-                            "🏁 Toca el mapa para marcar el DESTINO",
+                        else "🏁 Toca el mapa para marcar el DESTINO",
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
-            // Botones lado derecho centro
             Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(16.dp),
+                modifier = Modifier.align(Alignment.CenterEnd).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FloatingActionButton(
                     onClick = {
                         mapType = when (mapType) {
-                            MapType.NORMAL -> MapType.SATELLITE
+                            MapType.NORMAL    -> MapType.SATELLITE
                             MapType.SATELLITE -> MapType.HYBRID
-                            MapType.HYBRID -> MapType.TERRAIN
-                            MapType.TERRAIN -> MapType.NORMAL
-                            else -> MapType.NORMAL
+                            MapType.HYBRID    -> MapType.TERRAIN
+                            MapType.TERRAIN   -> MapType.NORMAL
+                            else              -> MapType.NORMAL
                         }
                     },
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(
                         text = when (mapType) {
-                            MapType.NORMAL -> "🗺️"
+                            MapType.NORMAL    -> "🗺️"
                             MapType.SATELLITE -> "🛰️"
-                            MapType.HYBRID -> "🌍"
-                            MapType.TERRAIN -> "🏔️"
-                            else -> "🗺️"
+                            MapType.HYBRID    -> "🌍"
+                            MapType.TERRAIN   -> "🏔️"
+                            else              -> "🗺️"
                         },
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
 
-
-                // Botón menú
-                FloatingActionButton(
-                    onClick = { scope.launch { drawerState.open() } }
-                ) {
+                FloatingActionButton(onClick = { scope.launch { drawerState.open() } }) {
                     Icon(Icons.Default.Menu, contentDescription = "Menú")
                 }
 
-                // Botón mi ubicación
                 FloatingActionButton(
                     onClick = {
                         if (locationPermission.status.isGranted) {
@@ -418,11 +519,22 @@ fun MapScreen(
                     },
                     onRutaEncontrada = { codigos ->
                         rutasResaltadas = codigos.toSet()
-
                     }
                 )
             }
 
+            // HU-21: Sheet de comentarios
+            if (mostrarComentarios && rutaSeleccionada != null) {
+                ComentariosSheet(
+                    rutaId = rutaSeleccionada!!.id,
+                    rutaNombre = rutaSeleccionada!!.nombre,
+                    rutaCodigo = rutaSeleccionada!!.codigo,
+                    onDismiss = {
+                        mostrarComentarios = false
+                        rutaSeleccionada = null
+                    }
+                )
+            }
         }
     }
 }
