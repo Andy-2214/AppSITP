@@ -1,17 +1,20 @@
 package com.sitp.arequipa.ui.busqueda
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapCalls
 import androidx.compose.material3.*
@@ -31,39 +34,124 @@ import com.sitp.arequipa.viewmodel.BusquedaState
 import com.sitp.arequipa.viewmodel.BusquedaViewModel
 import com.sitp.arequipa.viewmodel.HistorialViewModel
 
-private val BusRed    = Color(0xFFC62828)
-private val BusGray   = Color(0xFF757575)
-private val BusBg     = Color(0xFFF5F5F5)
-private val BusGreen  = Color(0xFF388E3C)
+private val BusRed      = Color(0xFFC62828)
+private val BusDarkRed  = Color(0xFF8E1B1B)
+private val BusGray     = Color(0xFF757575)
+private val BusBg       = Color(0xFFF5F5F5)
+private val BusGreen    = Color(0xFF388E3C)
+private val BusLightRed = Color(0xFFFFEBEE)
 
-@OptIn(ExperimentalMaterial3Api::class)
+fun parseHexColor(hex: String): Color = try {
+    Color(android.graphics.Color.parseColor(hex))
+} catch (e: Exception) { Color(0xFFC62828) }
+
+// ── Data models ──────────────────────────────────────────────────────────────
+data class SegmentoRuta(
+    val numero: Int,
+    val codigoRuta: String,
+    val abordarTexto: String,
+    val abordarDetalle: String,
+    val bajarTexto: String,
+    val bajarDetalle: String
+)
+
+data class RutaParseada(
+    val codigos: List<String>,
+    val segmentos: List<SegmentoRuta>,
+    val estimacionTiempo: String,
+    val estimacionCosto: String
+)
+
+// ── Parser ───────────────────────────────────────────────────────────────────
+fun parsearRespuestaIA(respuesta: String): RutaParseada {
+    val codigosRegex = Regex("RUTAS\\s*:\\s*\\[?([^\\]\\n]+)\\]?", RegexOption.IGNORE_CASE)
+    val codigos = codigosRegex.find(respuesta)?.groupValues?.get(1)
+        ?.split(",")?.map { it.trim().trim('"').trim() }?.filter { it.isNotEmpty() }
+        ?: emptyList()
+
+    val pasosRegex = Regex("""(\d+)\.\s*(.+?)(?=\n\d+\.|\nESTIMACION|\nEstimacion|\nEstimación|\z)""",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL))
+
+    val segmentos = pasosRegex.findAll(respuesta).toList().mapNotNull { match ->
+        val texto = match.groupValues[2].trim().replace("\n", " ").replace("  ", " ")
+        val contieneRuta = listOf("combi","bus","tome","transbordo","bájese","bajese","camine")
+            .any { texto.contains(it, ignoreCase = true) }
+        if (!contieneRuta) return@mapNotNull null
+
+        val codigo = Regex("""(?:combi|bus|ruta)\s+([A-Z]+-?\d+[A-Za-z]?)""", RegexOption.IGNORE_CASE)
+            .find(texto)?.groupValues?.get(1) ?: ""
+
+        val splitRegex = Regex(""",?\s*y\s+(?:bájese|bajese|baje)\s+""", RegexOption.IGNORE_CASE)
+        val partes = splitRegex.split(texto, 2)
+        val abordar = partes[0].trim()
+        val bajar   = if (partes.size > 1) partes[1].trim() else ""
+
+        val cercaRegex = Regex(""",?\s*cerca\s+de\s+(.+)""", RegexOption.IGNORE_CASE)
+        val mA = cercaRegex.find(abordar)
+        val mB = cercaRegex.find(bajar)
+
+        val abordarTexto   = (if (mA != null) abordar.substring(0, mA.range.first) else abordar).trim().trimEnd(',', '.')
+        val abordarDetalle = mA?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
+        val bajarBase      = (if (mB != null) bajar.substring(0, mB.range.first) else bajar).trim().trimEnd(',', '.')
+        val bajarDetalle   = mB?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
+        val bajarTexto = when {
+            bajarBase.isEmpty() -> ""
+            bajarBase.startsWith("Bájese", ignoreCase = true) ||
+            bajarBase.startsWith("Bajese",  ignoreCase = true) ||
+            bajarBase.startsWith("Baje",    ignoreCase = true) ->
+                bajarBase.replaceFirst("baje ", "Bájese en ", ignoreCase = true)
+                         .replaceFirst("bajese ", "Bájese en ", ignoreCase = true)
+            else -> "Bájese en $bajarBase"
+        }
+
+        SegmentoRuta(0, codigo, abordarTexto,
+            if (abordarDetalle.isNotEmpty()) "Cerca de $abordarDetalle" else "",
+            bajarTexto,
+            if (bajarDetalle.isNotEmpty()) "Cerca de $bajarDetalle" else "")
+    }.mapIndexed { i, s -> s.copy(numero = i + 1) }
+
+    val tiempo = Regex("""ESTIMACION[:\s]*([^,\n]*(?:minutos|min|hora)[^,\n]*)""", RegexOption.IGNORE_CASE)
+        .find(respuesta)?.groupValues?.get(1)?.trim() ?: ""
+    val costo  = Regex("""S/\s*[\d.]+(?:\s*\([^)]*\))?""", RegexOption.IGNORE_CASE)
+        .find(respuesta)?.value?.trim() ?: ""
+
+    return RutaParseada(codigos, segmentos, tiempo, costo)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BusquedaSheet — ahora es un composable fijo (NO ModalBottomSheet)
+// MapScreen lo posiciona en Alignment.BottomCenter dentro de un Box,
+// por eso no se cierra al arrastrar el mapa.
+// ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun BusquedaSheet(
     origenLatLng: LatLng?,
     destinoLatLng: LatLng?,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit,                       // swipe-down / botón ← en estado Idle
     onSeleccionarOrigen: () -> Unit,
     onSeleccionarDestino: () -> Unit,
     onRutaEncontrada: (List<String>) -> Unit,
+    onNuevaOptimizacion: () -> Unit,             // ← borra rutas del mapa y resetea
+    rutaColores: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(),
     historialViewModel: HistorialViewModel = viewModel()
 ) {
-    var preferencia by remember { mutableStateOf("tiempo") }
+    var preferencia   by remember { mutableStateOf("tiempo") }
     var consultaExtra by remember { mutableStateOf("") }
     val busquedaState by busquedaViewModel.busquedaState.collectAsState()
 
-    // ── Lógica: guardar historial ──────────────────────────────────────────────
+    // guardar historial
     var yaGuardado by remember { mutableStateOf(false) }
     LaunchedEffect(busquedaState) {
         if (busquedaState is BusquedaState.Success && !yaGuardado) {
             yaGuardado = true
-            val respuesta = (busquedaState as BusquedaState.Success).respuesta
+            val r = (busquedaState as BusquedaState.Success).respuesta
             if (origenLatLng != null && destinoLatLng != null) {
                 historialViewModel.guardarBusqueda(
-                    origen  = "${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}",
-                    destino = "${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}",
-                    preferencia   = preferencia,
-                    respuestaIA   = respuesta
+                    origen      = "${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}",
+                    destino     = "${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}",
+                    preferencia = preferencia,
+                    respuestaIA = r
                 )
             }
         }
@@ -72,315 +160,342 @@ fun BusquedaSheet(
 
     var primeraVez by remember { mutableStateOf(true) }
     LaunchedEffect(origenLatLng, destinoLatLng) {
-        if (primeraVez) primeraVez = false
-        else busquedaViewModel.resetState()
+        if (primeraVez) primeraVez = false else busquedaViewModel.resetState()
     }
 
-    val codigosRuta: List<String> = remember(busquedaState) {
-        if (busquedaState is BusquedaState.Success) {
-            val respuesta = (busquedaState as BusquedaState.Success).respuesta
-            val codigosRegex = Regex("RUTAS\\s*:\\s*\\[?([^\\]\\n]+)\\]?", RegexOption.IGNORE_CASE)
-            val match = codigosRegex.find(respuesta)
-            match?.groupValues?.get(1)
-                ?.split(",")
-                ?.map { it.trim().trim('"').trim() }
-                ?.filter { it.isNotEmpty() }
-                ?: emptyList()
-        } else emptyList()
+    val rutaParseada = remember(busquedaState) {
+        if (busquedaState is BusquedaState.Success)
+            parsearRespuestaIA((busquedaState as BusquedaState.Success).respuesta)
+        else RutaParseada(emptyList(), emptyList(), "", "")
     }
 
-    // ── UI ────────────────────────────────────────────────────────────────────
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+    LaunchedEffect(rutaParseada.codigos) {
+        if (rutaParseada.codigos.isNotEmpty()) onRutaEncontrada(rutaParseada.codigos)
+    }
+
+    // ── Surface fijo (reemplaza al ModalBottomSheet) ──────────────────────
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.55f),               // ocupa hasta 55 % de la pantalla
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        color = Color.White,
+        shadowElevation = 16.dp
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-
-            // ── Título ────────────────────────────────────────────────────────
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+        // Handle visual de arrastre
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFFFEBEE)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Filled.Place,
-                        contentDescription = null,
-                        tint = BusRed,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Text(
-                    text = "Buscar ruta",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1A1A1A)
+                        .width(40.dp).height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFE0E0E0))
                 )
             }
 
-            // ── Tarjetas Origen / Destino ─────────────────────────────────────
-            if (busquedaState !is BusquedaState.Success && busquedaState !is BusquedaState.Loading) {
-
-                Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                    // Origen
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSeleccionarOrigen() },
-                        shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
-                        colors = CardDefaults.cardColors(containerColor = BusBg),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Filled.LocationOn,
-                                contentDescription = null,
-                                tint = BusGreen,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
-                                Text("ORIGEN", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                                Text(
-                                    text = if (origenLatLng != null)
-                                        "Origen: ${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}"
-                                    else "Toca para marcar origen",
-                                    fontSize = 15.sp,
-                                    color = if (origenLatLng != null) Color(0xFF1A1A1A) else BusGray,
-                                    fontWeight = FontWeight.Medium
-                                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // ── Título con botón ← ───────────────────────────────────────
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Botón ← atrás
+                    val esResultado = busquedaState is BusquedaState.Success
+                    IconButton(
+                        onClick = {
+                            if (esResultado) {
+                                // Desde resultado: nueva optimización (limpia mapa)
+                                consultaExtra = ""
+                                primeraVez    = true
+                                busquedaViewModel.resetState()
+                                onNuevaOptimizacion()
+                            } else {
+                                // Desde formulario: cerrar panel
+                                onDismiss()
                             }
-                        }
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Atrás",
+                            tint = BusDarkRed,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
-
-                    // Línea conectora
+                    Spacer(modifier = Modifier.width(6.dp))
                     Box(
                         modifier = Modifier
-                            .padding(start = 28.dp)
-                            .width(2.dp)
-                            .height(6.dp)
-                            .background(Color(0xFFBDBDBD))
-                    )
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(BusLightRed),
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(20.dp)) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Buscar ruta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
+                }
 
-                    // Destino
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSeleccionarDestino() },
-                        shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 14.dp, bottomEnd = 14.dp),
-                        colors = CardDefaults.cardColors(containerColor = BusBg),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // ── Tarjetas Origen / Destino (solo Idle) ────────────────────
+                if (busquedaState !is BusquedaState.Success && busquedaState !is BusquedaState.Loading) {
+                    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { onSeleccionarOrigen() },
+                            shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
+                            colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
                         ) {
-                            Icon(
-                                Icons.Filled.Place,
-                                contentDescription = null,
-                                tint = BusRed,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column {
-                                Text("DESTINO", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                                Text(
-                                    text = if (destinoLatLng != null)
-                                        "Destino: ${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}"
-                                    else "Toca para marcar destino",
-                                    fontSize = 15.sp,
-                                    color = if (destinoLatLng != null) Color(0xFF1A1A1A) else BusGray,
-                                    fontWeight = FontWeight.Medium
-                                )
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Filled.LocationOn, null, tint = BusGreen, modifier = Modifier.size(22.dp))
+                                Column {
+                                    Text("ORIGEN", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+                                    Text(
+                                        if (origenLatLng != null) "${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}"
+                                        else "Toca para marcar origen",
+                                        fontSize = 14.sp, color = if (origenLatLng != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                        Box(modifier = Modifier.padding(start = 28.dp).width(2.dp).height(6.dp).background(Color(0xFFBDBDBD)))
+                        Card(
+                            modifier = Modifier.fillMaxWidth().clickable { onSeleccionarDestino() },
+                            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 14.dp, bottomEnd = 14.dp),
+                            colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(22.dp))
+                                Column {
+                                    Text("DESTINO", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+                                    Text(
+                                        if (destinoLatLng != null) "${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}"
+                                        else "Toca para marcar destino",
+                                        fontSize = 14.sp, color = if (destinoLatLng != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
-                }
 
-                // ── Preferencia ───────────────────────────────────────────────
-                Text(
-                    text = "Preferencia:",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A1A1A)
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PreferenciaCard(
-                        icon     = Icons.Filled.AccessTime,
-                        titulo   = "Menor tiempo",
-                        subtitulo = "Llega más rápido a tu destino",
-                        selected = preferencia == "tiempo",
-                        onClick  = { preferencia = "tiempo" }
-                    )
-                    PreferenciaCard(
-                        icon     = Icons.Filled.MonetizationOn,
-                        titulo   = "Menor costo",
-                        subtitulo = "La ruta más económica",
-                        selected = preferencia == "costo",
-                        onClick  = { preferencia = "costo" }
-                    )
-                    PreferenciaCard(
-                        icon     = Icons.Filled.SwapCalls,
-                        titulo   = "Menos transbordos",
-                        subtitulo = "Ruta más directa, menos caminata",
-                        selected = preferencia == "transbordos",
-                        onClick  = { preferencia = "transbordos" }
-                    )
-                }
-
-                // ── Optimizando por ───────────────────────────────────────────
-                Text(
-                    text = when (preferencia) {
-                        "tiempo"      -> "Optimizando por: menor tiempo de viaje"
-                        "costo"       -> "Optimizando por: menor costo (S/1.30 por combi)"
-                        "transbordos" -> "Optimizando por: menos transbordos posibles"
-                        else -> ""
-                    },
-                    fontSize = 13.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = BusRed
-                )
-
-                // ── Campo adicional ───────────────────────────────────────────
-                Text(
-                    text = "Información adicional (opcional)",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF1A1A1A)
-                )
-                OutlinedTextField(
-                    value = consultaExtra,
-                    onValueChange = { consultaExtra = it },
-                    placeholder = {
-                        Text(
-                            "Ej: Quiero pasar por el mercado San Camilo, prefiero caminar poco",
-                            fontSize = 13.sp,
-                            color = BusGray
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = BusRed,
-                        focusedLabelColor  = BusRed,
-                        cursorColor        = BusRed
-                    )
-                )
-            }
-
-            // ── Estados de búsqueda (lógica intacta) ─────────────────────────
-            when (val state = busquedaState) {
-                is BusquedaState.Loading -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(color = BusRed)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("La IA está analizando las rutas...", color = BusGray, fontSize = 14.sp)
+                    Text("Preferencia:", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PreferenciaCard(Icons.Filled.AccessTime, "Menor tiempo", "Llega más rápido a tu destino", preferencia == "tiempo") { preferencia = "tiempo" }
+                        PreferenciaCard(Icons.Filled.MonetizationOn, "Menor costo", "La ruta más económica", preferencia == "costo") { preferencia = "costo" }
+                        PreferenciaCard(Icons.Filled.SwapCalls, "Menos transbordos", "Ruta más directa, menos caminata", preferencia == "transbordos") { preferencia = "transbordos" }
                     }
+                    Text(
+                        when (preferencia) {
+                            "tiempo"      -> "Optimizando por: menor tiempo de viaje"
+                            "costo"       -> "Optimizando por: menor costo (S/1.30 por combi)"
+                            "transbordos" -> "Optimizando por: menos transbordos posibles"
+                            else -> ""
+                        }, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = BusRed
+                    )
+                    Text("Información adicional (opcional)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                    OutlinedTextField(
+                        value = consultaExtra, onValueChange = { consultaExtra = it },
+                        placeholder = { Text("Ej: Quiero pasar por el mercado San Camilo", fontSize = 13.sp, color = BusGray) },
+                        modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BusRed, focusedLabelColor = BusRed, cursorColor = BusRed)
+                    )
                 }
 
-                is BusquedaState.Success -> {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("🤖 Recomendación de la IA:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BusRed)
-                            Text(state.respuesta, fontSize = 13.sp, color = Color(0xFF1A1A1A))
+                // ── Estados ──────────────────────────────────────────────────
+                when (val state = busquedaState) {
+                    is BusquedaState.Loading -> {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(color = BusRed, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("La IA está analizando las rutas...", color = BusGray, fontSize = 14.sp)
                         }
                     }
-
-                    if (codigosRuta.isNotEmpty()) {
+                    is BusquedaState.Success -> {
+                        ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores)
+                    }
+                    is BusquedaState.Error -> {
+                        Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                        OutlinedButton(
+                            onClick = { busquedaViewModel.resetState() },
+                            modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(14.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, BusRed),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = BusRed)
+                        ) {
+                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Intentar de nuevo", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    else -> {
                         Button(
-                            onClick = { onRutaEncontrada(codigosRuta); onDismiss() },
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BusRed)
-                        ) {
-                            Text("🗺️ Ver rutas en el mapa", fontWeight = FontWeight.Bold)
+                            onClick = {
+                                if (origenLatLng != null && destinoLatLng != null) {
+                                    busquedaViewModel.buscarRutaPorCoordenadas(
+                                        origenLat = origenLatLng.latitude, origenLng = origenLatLng.longitude,
+                                        destinoLat = destinoLatLng.latitude, destinoLng = destinoLatLng.longitude,
+                                        preferencia = preferencia, consultaExtra = consultaExtra
+                                    )
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BusRed),
+                            enabled = origenLatLng != null && destinoLatLng != null
+                        ) { Text("Buscar ruta óptima", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Timeline de resultados ────────────────────────────────────────────────────
+@Composable
+private fun ResultadoRutaTimeline(
+    rutaParseada: RutaParseada,
+    respuestaOriginal: String,
+    rutaColores: Map<String, String>
+) {
+    if (rutaParseada.segmentos.isEmpty()) {
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = BusLightRed), elevation = CardDefaults.cardElevation(0.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("🤖 Recomendación de la IA:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BusRed)
+                Text(respuestaOriginal, fontSize = 13.sp, color = Color(0xFF1A1A1A))
+            }
+        }
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+
+        // ── Leyenda centrada ─────────────────────────────────────────────
+        if (rutaParseada.codigos.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = BusBg),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,          // ← centrado
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    rutaParseada.codigos.forEachIndexed { idx, codigo ->
+                        if (idx > 0) Spacer(modifier = Modifier.width(20.dp))
+                        val color = rutaColores[codigo]?.let { parseHexColor(it) } ?: BusRed
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(modifier = Modifier.width(22.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(color))
+                            Text(codigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
                         }
                     }
+                }
+            }
+        }
 
-                    OutlinedButton(
-                        onClick = {
-                            consultaExtra = ""
-                            primeraVez    = true
-                            busquedaViewModel.resetState()
-                        },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, BusRed),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BusRed)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Nueva optimización", fontWeight = FontWeight.SemiBold)
+        // ── Segmentos ────────────────────────────────────────────────────
+        rutaParseada.segmentos.forEachIndexed { index, segmento ->
+            val esUltimo = index == rutaParseada.segmentos.lastIndex
+            SegmentoRutaCard(segmento, esUltimo, hayTransbordo = !esUltimo, rutaColores)
+        }
+    }
+}
+
+// ── Card de segmento ─────────────────────────────────────────────────────────
+@Composable
+private fun SegmentoRutaCard(
+    segmento: SegmentoRuta,
+    esUltimo: Boolean,
+    hayTransbordo: Boolean,
+    rutaColores: Map<String, String>
+) {
+    val rutaColor      = rutaColores[segmento.codigoRuta]?.let { parseHexColor(it) } ?: BusDarkRed
+    val rutaColorLight = rutaColor.copy(alpha = 0.12f)
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        // ── Columna izquierda: bus + línea + indicador transbordo ────────
+        Box(modifier = Modifier.width(52.dp), contentAlignment = Alignment.TopCenter) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                // Círculo bus
+                Box(contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(rutaColorLight))
+                    Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(rutaColor), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.DirectionsBus, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                 }
 
-                is BusquedaState.Error -> {
-                    Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
-                    OutlinedButton(
-                        onClick = { busquedaViewModel.resetState() },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.5.dp, BusRed),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = BusRed)
+                if (!esUltimo) {
+                    // Línea delgada hacia abajo
+                    Box(modifier = Modifier.width(3.dp).height(16.dp).background(rutaColor))
+
+                    // ── Símbolo de transbordo en el spine de la línea ────
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF6F00)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Intentar de nuevo", fontWeight = FontWeight.SemiBold)
+                        Text("⇄", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Línea desde transbordo al siguiente bus
+                    Box(modifier = Modifier.width(3.dp).height(16.dp).background(rutaColor))
+                }
+            }
+        }
+
+        // ── Card derecha ─────────────────────────────────────────────────
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp, end = 4.dp, top = 6.dp, bottom = if (esUltimo) 0.dp else 8.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                // Header: número + badge con color de ruta
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(modifier = Modifier.size(24.dp).clip(CircleShape).background(BusRed), contentAlignment = Alignment.Center) {
+                        Text("${segmento.numero}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (segmento.codigoRuta.isNotEmpty()) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(rutaColor).padding(horizontal = 12.dp, vertical = 4.dp)) {
+                            Text(segmento.codigoRuta, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
-                else -> {
-                    Button(
-                        onClick = {
-                            if (origenLatLng != null && destinoLatLng != null) {
-                                busquedaViewModel.buscarRutaPorCoordenadas(
-                                    origenLat    = origenLatLng.latitude,
-                                    origenLng    = origenLatLng.longitude,
-                                    destinoLat   = destinoLatLng.latitude,
-                                    destinoLng   = destinoLatLng.longitude,
-                                    preferencia  = preferencia,
-                                    consultaExtra = consultaExtra
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BusRed),
-                        enabled = origenLatLng != null && destinoLatLng != null
-                    ) {
-                        Text("Buscar ruta óptima", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                // Abordaje
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.RadioButtonUnchecked, null, tint = rutaColor, modifier = Modifier.size(18.dp).offset(y = 2.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(segmento.abordarTexto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A), lineHeight = 18.sp)
+                        if (segmento.abordarDetalle.isNotEmpty())
+                            Text(segmento.abordarDetalle, fontSize = 12.sp, color = BusGray, lineHeight = 16.sp, modifier = Modifier.padding(top = 2.dp))
+                    }
+                }
+
+                // Bajada (sin símbolo de transbordo aquí — está en el spine izquierdo)
+                if (segmento.bajarTexto.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(18.dp).offset(y = 2.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(segmento.bajarTexto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A), lineHeight = 18.sp)
+                            if (segmento.bajarDetalle.isNotEmpty())
+                                Text(segmento.bajarDetalle, fontSize = 12.sp, color = BusGray, lineHeight = 16.sp, modifier = Modifier.padding(top = 2.dp))
+                        }
                     }
                 }
             }
@@ -391,11 +506,7 @@ fun BusquedaSheet(
 // ── Card de preferencia ───────────────────────────────────────────────────────
 @Composable
 private fun PreferenciaCard(
-    icon: ImageVector,
-    titulo: String,
-    subtitulo: String,
-    selected: Boolean,
-    onClick: () -> Unit
+    icon: ImageVector, titulo: String, subtitulo: String, selected: Boolean, onClick: () -> Unit
 ) {
     val bgColor      = if (selected) BusRed else BusBg
     val contentColor = if (selected) Color.White else Color(0xFF1A1A1A)
@@ -403,31 +514,18 @@ private fun PreferenciaCard(
     val iconBg       = if (selected) Color.White.copy(alpha = 0.2f) else Color(0xFFE0E0E0)
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(iconBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(iconBg), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = contentColor, modifier = Modifier.size(22.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(titulo, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = contentColor)
+                Text(titulo, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = contentColor)
                 Text(subtitulo, fontSize = 12.sp, color = subColor)
             }
         }

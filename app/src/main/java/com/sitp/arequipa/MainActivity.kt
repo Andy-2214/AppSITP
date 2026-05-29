@@ -6,12 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.sitp.arequipa.ui.auth.LoginScreen
 import com.sitp.arequipa.ui.auth.RegisterScreen
 import com.sitp.arequipa.ui.auth.ForgotPasswordScreen
 import com.sitp.arequipa.ui.map.MapScreen
 import com.sitp.arequipa.ui.theme.SistemaTransporteArequipaTheme
-import com.sitp.arequipa.viewmodel.AuthViewModel 
+import com.sitp.arequipa.viewmodel.AuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,9 +29,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavigation() {
     val authViewModel: AuthViewModel = viewModel()
-    var currentScreen by remember { mutableStateOf("login") }
 
-    // Para repetir búsqueda desde historial
+    // Si ya hay una sesión activa y el email está verificado, ir directo al mapa
+    val usuarioActual = FirebaseAuth.getInstance().currentUser
+    val pantallaInicial = if (usuarioActual != null && usuarioActual.isEmailVerified) "map" else "login"
+
+    var currentScreen by remember { mutableStateOf(pantallaInicial) }
+
     var origenRepetir by remember { mutableStateOf<String?>(null) }
     var destinoRepetir by remember { mutableStateOf<String?>(null) }
     var preferenciaRepetir by remember { mutableStateOf<String?>(null) }
@@ -72,4 +77,4 @@ fun AppNavigation() {
             }
         }
     }
-}
+}
