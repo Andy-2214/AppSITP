@@ -25,6 +25,12 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -407,7 +413,7 @@ fun MapScreen(
                                     mostrarBusqueda = true
                                 }
                                 else -> {
-                                    // Detalle de ruta accesible desde la lista de Rutas (botón ›)
+                                    // No cerrar la búsqueda al tocar el mapa
                                 }
                             }
                         },
@@ -580,15 +586,33 @@ fun MapScreen(
                         }
                     }
 
-                    // ── Sheet de búsqueda ─────────────────────────────────
-                    if (mostrarBusqueda) {
+                    // ── Panel de búsqueda fijo (no-modal) con animación ──
+                    val rutaColores = remember(rutas) {
+                        rutas.associate { it.codigo to it.color }
+                    }
+                    AnimatedVisibility(
+                        visible = mostrarBusqueda,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter),
+                        enter = slideInVertically(
+                            animationSpec = tween(durationMillis = 380),
+                            initialOffsetY = { fullHeight -> fullHeight }   // sube desde abajo
+                        ) + fadeIn(animationSpec = tween(durationMillis = 280)),
+                        exit  = slideOutVertically(
+                            animationSpec = tween(durationMillis = 300),
+                            targetOffsetY = { fullHeight -> fullHeight }    // baja hacia abajo
+                        ) + fadeOut(animationSpec = tween(durationMillis = 200))
+                    ) {
                         BusquedaSheet(
-                            origenLatLng = origenLatLng,
-                            destinoLatLng = destinoLatLng,
-                            onDismiss = { mostrarBusqueda = false },
+                            origenLatLng        = origenLatLng,
+                            destinoLatLng       = destinoLatLng,
+                            onDismiss           = { mostrarBusqueda = false },
                             onSeleccionarOrigen = { mostrarBusqueda = false; modoSeleccion = "origen" },
-                            onSeleccionarDestino = { mostrarBusqueda = false; modoSeleccion = "destino" },
-                            onRutaEncontrada = { codigos -> rutasResaltadas = codigos.toSet() }
+                            onSeleccionarDestino= { mostrarBusqueda = false; modoSeleccion = "destino" },
+                            onRutaEncontrada    = { codigos -> rutasResaltadas = codigos.toSet() },
+                            onNuevaOptimizacion = { rutasResaltadas = emptySet() },
+                            rutaColores         = rutaColores
                         )
                     }
 
