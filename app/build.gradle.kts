@@ -24,7 +24,7 @@ android {
         versionName = "1.0"
         buildConfigField("String", "GROQ_API_KEY", "\"${project.findProperty("GROQ_API_KEY")}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GOOGLE_GEOCODING_API_KEY", "\"${project.findProperty("GOOGLE_GEOCODING_API_KEY")}\"")
+        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${project.findProperty("GOOGLE_MAPS_API_KEY")}\"")
     }
 
     buildTypes {
