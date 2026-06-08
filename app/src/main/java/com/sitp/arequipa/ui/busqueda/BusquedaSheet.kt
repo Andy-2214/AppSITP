@@ -82,7 +82,13 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
         val texto = match.groupValues[2].trim().replace("\n", " ").replace("  ", " ")
         val contieneRuta = listOf("combi","bus","tome","transbordo","bájese","bajese","camine")
             .any { texto.contains(it, ignoreCase = true) }
-        if (!contieneRuta) return@mapNotNull null
+        // Descartar lineas de costo o estimacion que no son pasos de ruta
+        val esCostoOEstimacion = texto.contains("S/") ||
+                texto.contains("costo", ignoreCase = true) ||
+                texto.contains("estimaci", ignoreCase = true) ||
+                texto.matches(Regex(".*\\d+\\s*[xX]\\s*S/.*")) ||
+                texto.matches(Regex("^[\\d.,]+\\s*\\(.*\\)$"))
+        if (!contieneRuta || esCostoOEstimacion) return@mapNotNull null
 
         val codigo = Regex("""(?:combi|bus|ruta)\s+([A-Z]+-?\d+[A-Za-z]?)""", RegexOption.IGNORE_CASE)
             .find(texto)?.groupValues?.get(1) ?: ""

@@ -213,9 +213,13 @@ Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas dispon
                 val fallback = results.getJSONObject(0)
                     .getString("formatted_address")
                     .split(",")
-                    .filterNot { it.trim().equals("Perú", ignoreCase = true) }
-                    .filterNot { it.trim().equals("Arequipa", ignoreCase = true) }
-                    .take(2).joinToString(",").trim()
+                    .map { it.trim() }
+                    .filterNot { it.equals("Perú", ignoreCase = true) }
+                    .filterNot { it.equals("Arequipa", ignoreCase = true) }
+                    .filterNot { it.matches(Regex("\\d{5}")) }         // códigos postales
+                    .filterNot { it.matches(Regex("\\d+")) }           // números sueltos
+                    .filterNot { it.isBlank() }
+                    .take(2).joinToString(", ").trim()
 
                 println("DEBUG geocoding fallback: $fallback")
                 fallback.ifEmpty { "zona de Arequipa" }

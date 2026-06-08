@@ -173,14 +173,9 @@ fun calcularTramo(
     val subtramo = puntos.subList(inicio, fin + 1)
         .let { if (idxOrigen > idxDestino) it.reversed() else it }
 
-    val extension    = 8
-    val idxInicioExt = maxOf(0, inicio - extension)
-    val idxFinExt    = minOf(puntos.lastIndex, fin + extension)
-    val tramoFinal   = puntos.subList(idxInicioExt, idxFinExt + 1)
-        .let { if (idxOrigen > idxDestino) it.reversed() else it }
-
-    println("  calcularTramo: idxOrigen=$idxOrigen idxDestino=$idxDestino total=${puntos.size} subtramo=${subtramo.size} tramoFinal=${tramoFinal.size}")
-    return if (tramoFinal.size >= subtramo.size) tramoFinal else subtramo
+    println("  calcularTramo: idxOrigen=$idxOrigen idxDestino=$idxDestino total=${puntos.size} subtramo=${subtramo.size}")
+    // Anclar exactamente al pin de origen y destino
+    return listOf(desdeLatLng) + subtramo + listOf(hastaLatLng)
 }
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
@@ -695,8 +690,22 @@ fun MapScreen(
                             val ruta = rutas.firstOrNull {
                                 it.codigo.equals(codigo, ignoreCase = true)
                             } ?: return@mapNotNull null
-                            val usaVuelta = ruta.coordenadasVuelta.isNotEmpty() &&
-                                    elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!) === ruta.coordenadasVuelta
+                            val usaVuelta = ruta.coordenadasVuelta.isNotEmpty() && run {
+                                val primeroIda    = ruta.coordenadas.firstOrNull()       ?: return@run false
+                                val ultimoIda     = ruta.coordenadas.lastOrNull()        ?: return@run false
+                                val primeroVuelta = ruta.coordenadasVuelta.firstOrNull() ?: return@run false
+                                val ultimoVuelta  = ruta.coordenadasVuelta.lastOrNull()  ?: return@run false
+                                fun distSq(p: Map<String,Double>, lat: Double, lng: Double): Double {
+                                    val dl = (p["lat"] ?: 0.0) - lat
+                                    val dn = (p["lng"] ?: 0.0) - lng
+                                    return dl*dl + dn*dn
+                                }
+                                val oLat = origenLatLng!!.latitude;  val oLng = origenLatLng!!.longitude
+                                val dLat = destinoLatLng!!.latitude; val dLng = destinoLatLng!!.longitude
+                                val scoreIda    = distSq(primeroIda,    oLat, oLng) + distSq(ultimoIda,    dLat, dLng)
+                                val scoreVuelta = distSq(primeroVuelta, oLat, oLng) + distSq(ultimoVuelta, dLat, dLng)
+                                scoreVuelta < scoreIda
+                            }
                             codigo to if (usaVuelta) "VUELTA" else "IDA"
                         }.toMap()
                     }
