@@ -178,6 +178,26 @@ fun calcularTramo(
     return listOf(desdeLatLng) + subtramo + listOf(hastaLatLng)
 }
 
+fun crearTramos(segmento: List<LatLng>, colorBus: Color): List<TramoGuia> {
+    if (segmento.size < 3) return listOf(TramoGuia(segmento, colorBus, false))
+    val tramos = mutableListOf<TramoGuia>()
+    val pInicio = segmento.first()
+    val pBusInicio = segmento[1]
+    val pBusFin = segmento[segmento.size - 2]
+    val pFin = segmento.last()
+    val busSegment = segmento.subList(1, segmento.size - 1)
+    if (pInicio != pBusInicio) {
+        tramos.add(TramoGuia(listOf(pInicio, pBusInicio), Color.Gray, true))
+    }
+    if (busSegment.size >= 2) {
+        tramos.add(TramoGuia(busSegment, colorBus, false))
+    }
+    if (pFin != pBusFin) {
+        tramos.add(TramoGuia(listOf(pBusFin, pFin), Color.Gray, true))
+    }
+    return tramos
+}
+
 // ── Utilidades ───────────────────────────────────────────────────────────────
 @SuppressLint("MissingPermission")
 fun obtenerUbicacion(
@@ -301,7 +321,7 @@ fun MapScreen(
                     val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
                     println("DEBUG segmento size: ${segmento.size}")
                     if (segmento.isNotEmpty())
-                        tramos.add(TramoGuia(segmento, parseColor(ruta.color), false))
+                        tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                 }
                 rutasRecomendadas.size >= 2 -> {
                     val ruta1  = rutasRecomendadas[0]
@@ -311,8 +331,8 @@ fun MapScreen(
                     val seg1 = calcularTramo(coords1, origenLatLng!!, destinoLatLng!!)
                     val transbordo = seg1.lastOrNull() ?: return@LaunchedEffect
                     val seg2 = calcularTramo(coords2, transbordo, destinoLatLng!!)
-                    if (seg1.isNotEmpty()) tramos.add(TramoGuia(seg1, parseColor(ruta1.color), false))
-                    if (seg2.isNotEmpty()) tramos.add(TramoGuia(seg2, parseColor(ruta2.color), false))
+                    if (seg1.isNotEmpty()) tramos.addAll(crearTramos(seg1, parseColor(ruta1.color)))
+                    if (seg2.isNotEmpty()) tramos.addAll(crearTramos(seg2, parseColor(ruta2.color)))
                 }
             }
             tramosGuia = tramos
@@ -529,6 +549,13 @@ fun MapScreen(
                                 if (!tramo.esCaminata) {
                                     Polyline(points = tramo.puntos, color = Color(0xFF1565C0), width = 16f)
                                     Polyline(points = tramo.puntos, color = Color(0xFF42A5F5), width = 7f)
+                                } else {
+                                    Polyline(
+                                        points = tramo.puntos,
+                                        color = Color.DarkGray,
+                                        width = 8f,
+                                        pattern = listOf(com.google.android.gms.maps.model.Dot(), com.google.android.gms.maps.model.Gap(15f))
+                                    )
                                 }
                             }
                         }
@@ -776,7 +803,7 @@ fun MapScreen(
                                             val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
                                             val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
                                             if (segmento.isNotEmpty())
-                                                tramos.add(TramoGuia(segmento, parseColor(ruta.color), false))
+                                                tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                                         }
                                         rutasUnicas.size >= 2 -> {
                                             val ruta1   = rutasUnicas[0]
@@ -795,9 +822,9 @@ fun MapScreen(
                                             }
                                             val segmento2 = calcularTramo(coords2, transbordo, destinoLatLng!!)
                                             if (segmento1.isNotEmpty())
-                                                tramos.add(TramoGuia(segmento1, parseColor(ruta1.color), false))
+                                                tramos.addAll(crearTramos(segmento1, parseColor(ruta1.color)))
                                             if (segmento2.isNotEmpty())
-                                                tramos.add(TramoGuia(segmento2, parseColor(ruta2.color), false))
+                                                tramos.addAll(crearTramos(segmento2, parseColor(ruta2.color)))
                                         }
                                     }
                                     tramosGuia = tramos
