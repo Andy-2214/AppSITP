@@ -18,7 +18,10 @@ class IAService {
         destino: String,
         preferencia: String,
         rutas: List<Map<String, Any>>,
-        consultaExtra: String = ""
+        consultaExtra: String = "",
+        rutasOrigen: List<String> = emptyList(),
+        rutasDestino: List<String> = emptyList(),
+        esDirecta: Boolean = false
     ): String {
         val promptDoc = db.collection("prompt_ia")
             .document("config")
@@ -27,9 +30,9 @@ class IAService {
         val promptBase = promptDoc.getString("texto") ?:
         "Eres un asistente de transporte público de Arequipa."
 
+        // Una línea por ruta para ahorrar tokens
         val rutasTexto = rutas.joinToString("\n") { ruta ->
-            "- Código: ${ruta["codigo"]}, Nombre: ${ruta["nombre"]}, " +
-                    "Empresa: ${ruta["empresa"]}, Avenidas: ${ruta["avenidas"]}"
+            "${ruta["codigo"]}: ${ruta["avenidas"]}"
         }
 
         val instruccionPreferencia = when (preferencia) {
@@ -43,10 +46,31 @@ class IAService {
             "\nInformación adicional del usuario: $consultaExtra"
         } else ""
 
+        val seccionDirecta = if (esDirecta) {
+            """
+
+⚠️ RUTA DIRECTA DISPONIBLE:
+El sistema GPS confirmó que hay una ruta que pasa cerca de AMBOS puntos.
+USA SOLO 1 RUTA — responde con un único paso numerado.
+NUNCA agregues una segunda ruta si hay una directa disponible."""
+        } else ""
+
+        val seccionProximidad = if (rutasOrigen.isNotEmpty() || rutasDestino.isNotEmpty()) {
+            """
+
+DATOS DE PROXIMIDAD GEOGRÁFICA (calculados por GPS, son exactos):
+- Rutas que pasan cerca del ORIGEN ($origen): ${if (rutasOrigen.isEmpty()) "ninguna directa" else rutasOrigen.joinToString(", ")}
+- Rutas que pasan cerca del DESTINO ($destino): ${if (rutasDestino.isEmpty()) "ninguna directa" else rutasDestino.joinToString(", ")}
+- REGLA: El usuario ABORDA una ruta del grupo ORIGEN y BAJA cerca del DESTINO.
+- Si una ruta aparece en ambos grupos es DIRECTA, recomendarla como único paso."""
+        } else ""
+
         val promptCompleto = """
 $promptBase
+$seccionDirecta
+$seccionProximidad
 
-Rutas disponibles:
+Itinerarios de las rutas candidatas (úsalos para confirmar sentido del viaje):
 $rutasTexto
 
 Usuario está en: $origen
@@ -54,10 +78,25 @@ Quiere llegar a: $destino
 Preferencia: $instruccionPreferencia
 $seccionExtra
 
-Reglas adicionales:
+REGLAS OBLIGATORIAS:
 - Todas las combis cobran S/1.30 por pasaje
 - NUNCA sugieras taxi, mototaxi u otro medio que no sea combi/bus de la lista
 - Si no es posible llegar con las rutas disponibles, dilo claramente
+- DEBES responder SIEMPRE en el formato exacto de abajo, sin excepciones
+- NO agregues explicaciones, saludos ni texto extra fuera del formato
+
+FORMATO DE RESPUESTA OBLIGATORIO:
+
+RUTAS: [CODIGO1, CODIGO2]
+
+1. Tome la combi CODIGO1 en [avenida de abordaje], cerca de [referencia], y bájese en [avenida de bajada], cerca de [referencia]
+2. Tome la combi CODIGO2 en [avenida de abordaje], cerca de [referencia], y bájese en [avenida de bajada], cerca de [referencia]
+
+ESTIMACION: X minutos aproximadamente
+COSTO TOTAL: S/X.XX (X combis x S/1.30)
+
+Si solo se necesita una combi, el formato es igual pero con un solo paso numerado.
+Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas disponibles desde [origen] hasta [destino]."
 """.trimIndent()
 
         return llamarGroq(promptCompleto)
@@ -75,14 +114,15 @@ Reglas adicionales:
                 connection.doOutput = true
 
                 val body = JSONObject().apply {
-                    put("model", "llama-3.3-70b-versatile")
+                    put("model", "llama-3.1-8b-instant")
                     put("messages", JSONArray().apply {
                         put(JSONObject().apply {
                             put("role", "user")
                             put("content", prompt)
                         })
                     })
-                    put("max_tokens", 800)
+                    put("max_tokens", 400)  // respuesta corta y formateada
+                    put("temperature", 0.1)
                 }.toString()
 
                 OutputStreamWriter(connection.outputStream).use { it.write(body) }
@@ -114,38 +154,78 @@ Reglas adicionales:
     suspend fun coordenadasANombre(lat: Double, lng: Double): String {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val url = "https://nominatim.openstreetmap.org/reverse" +
-                        "?lat=$lat&lon=$lng&format=json&zoom=16&addressdetails=1"
+                val apiKey = BuildConfig.GOOGLE_MAPS_API_KEY
+                val url = "https://maps.googleapis.com/maps/api/geocode/json" +
+                        "?latlng=$lat,$lng&key=$apiKey&language=es&region=pe"
                 val connection = java.net.URL(url).openConnection()
                         as java.net.HttpURLConnection
-                connection.setRequestProperty("User-Agent", "SistemaTransporteArequipa/1.0")
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
                 val response = connection.inputStream.bufferedReader().readText()
                 val json = org.json.JSONObject(response)
-                val address = json.getJSONObject("address")
+                val results = json.getJSONArray("results")
 
-                // Construir nombre compuesto más específico
-                val barrio = address.optString("suburb")
-                    .ifEmpty { address.optString("neighbourhood") }
-                    .ifEmpty { address.optString("quarter") }
-                    .ifEmpty { address.optString("city_district") }
+                if (results.length() == 0) return@withContext "zona de Arequipa"
 
-                val via = address.optString("road")
-                    .ifEmpty { address.optString("pedestrian") }
-
-                val resultado = when {
-                    barrio.isNotEmpty() && via.isNotEmpty() -> "$via, $barrio"
-                    barrio.isNotEmpty() -> barrio
-                    via.isNotEmpty() -> via
-                    else -> "zona de Arequipa"
+                fun extraerComponente(result: org.json.JSONObject, tipos: List<String>): String? {
+                    val components = result.getJSONArray("address_components")
+                    for (j in 0 until components.length()) {
+                        val comp = components.getJSONObject(j)
+                        val compTypes = comp.getJSONArray("types")
+                        val compTypesList = (0 until compTypes.length()).map { compTypes.getString(it) }
+                        if (tipos.any { it in compTypesList }) {
+                            return comp.getString("long_name")
+                        }
+                    }
+                    return null
                 }
 
-                println("DEBUG nominatim resultado: $resultado")
-                resultado
+                val prefijosAvenida = listOf("av.", "avenida", "jr.", "jirón", "calle", "pasaje")
+                var mejorAvenida: String? = null
+                var mejorDistrito: String? = null
+
+                for (i in 0 until results.length()) {
+                    val result = results.getJSONObject(i)
+                    val calle = extraerComponente(result, listOf("route"))
+                    val distrito = extraerComponente(result,
+                        listOf("sublocality_level_1", "neighborhood", "administrative_area_level_3"))
+
+                    if (calle != null && mejorAvenida == null) {
+                        mejorAvenida = calle
+                    }
+                    if (calle != null &&
+                        prefijosAvenida.any { calle.contains(it, ignoreCase = true) } &&
+                        calle.contains("av", ignoreCase = true)) {
+                        mejorAvenida = calle
+                    }
+                    if (distrito != null && mejorDistrito == null) {
+                        mejorDistrito = distrito
+                    }
+                }
+
+                val partes = listOfNotNull(mejorAvenida, mejorDistrito).distinct()
+                if (partes.isNotEmpty()) {
+                    val nombre = partes.take(2).joinToString(", ")
+                    println("DEBUG geocoding resultado: $nombre (lat=$lat, lng=$lng)")
+                    return@withContext nombre
+                }
+
+                val fallback = results.getJSONObject(0)
+                    .getString("formatted_address")
+                    .split(",")
+                    .map { it.trim() }
+                    .filterNot { it.equals("Perú", ignoreCase = true) }
+                    .filterNot { it.equals("Arequipa", ignoreCase = true) }
+                    .filterNot { it.matches(Regex("\\d{5}")) }         // códigos postales
+                    .filterNot { it.matches(Regex("\\d+")) }           // números sueltos
+                    .filterNot { it.isBlank() }
+                    .take(2).joinToString(", ").trim()
+
+                println("DEBUG geocoding fallback: $fallback")
+                fallback.ifEmpty { "zona de Arequipa" }
 
             } catch (e: Exception) {
-                println("DEBUG nominatim error: ${e.message}")
+                println("DEBUG geocoding error: ${e.message}")
                 "zona de Arequipa"
             }
         }
