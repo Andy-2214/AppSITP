@@ -32,13 +32,18 @@ class IAService {
 
         // Una línea por ruta para ahorrar tokens
         val rutasTexto = rutas.joinToString("\n") { ruta ->
-            "${ruta["codigo"]}: ${ruta["avenidas"]}"
+            val ida = ruta["avenidas"]?.toString() ?: ""
+            val vuelta = ruta["avenidaVuelta"]?.toString() ?: ""
+            if (vuelta.isNotBlank() && vuelta != ida) {
+                "${ruta["codigo"]}: $ida / $vuelta"
+            } else {
+                "${ruta["codigo"]}: $ida"
+            }
         }
 
         val instruccionPreferencia = when (preferencia) {
             "tiempo"      -> "Prioriza MENOS tiempo de viaje aunque haya más transbordos"
             "costo"       -> "Prioriza MENOS transbordos para ahorrar dinero (S/1.30 por combi)"
-            "transbordos" -> "Prioriza la ruta con el MENOR número de transbordos posible"
             else          -> "Prioriza MENOS tiempo de viaje"
         }
 
@@ -55,47 +60,54 @@ USA SOLO 1 RUTA — responde con un único paso numerado.
 NUNCA agregues una segunda ruta si hay una directa disponible."""
         } else ""
 
+        val reglaDirecta = if (preferencia == "costo") {
+            "Si una ruta aparece en ambos grupos es DIRECTA, recomiéndala como único paso obligatoriamente para ahorrar dinero."
+        } else {
+            "Si una ruta aparece en ambos grupos es DIRECTA. Sin embargo, prioriza el tiempo total de viaje; si una combinación de 2 o 3 rutas es más rápida que la ruta directa, prefiere la combinación."
+        }
+
         val seccionProximidad = if (rutasOrigen.isNotEmpty() || rutasDestino.isNotEmpty()) {
             """
 
-DATOS DE PROXIMIDAD GEOGRÁFICA (calculados por GPS, son exactos):
+DATOS DE PROXIMIDAD GEOGRÁFICA (calculados por GPS, son exactos, ordenados de más cercana a más lejana):
 - Rutas que pasan cerca del ORIGEN ($origen): ${if (rutasOrigen.isEmpty()) "ninguna directa" else rutasOrigen.joinToString(", ")}
 - Rutas que pasan cerca del DESTINO ($destino): ${if (rutasDestino.isEmpty()) "ninguna directa" else rutasDestino.joinToString(", ")}
-- REGLA: El usuario ABORDA una ruta del grupo ORIGEN y BAJA cerca del DESTINO.
-- Si una ruta aparece en ambos grupos es DIRECTA, recomendarla como único paso."""
+- REGLA 1: El usuario DEBE abordar una ruta del grupo ORIGEN (prioriza enormemente las primeras de la lista por estar físicamente más cerca) y bajar cerca del DESTINO (prioriza las primeras de la lista).
+- REGLA 2: $reglaDirecta"""
         } else ""
 
         val promptCompleto = """
 $promptBase
 $seccionDirecta
 $seccionProximidad
-
+ 
 Itinerarios de las rutas candidatas (úsalos para confirmar sentido del viaje):
 $rutasTexto
-
+ 
 Usuario está en: $origen
 Quiere llegar a: $destino
 Preferencia: $instruccionPreferencia
 $seccionExtra
-
+ 
 REGLAS OBLIGATORIAS:
 - Todas las combis cobran S/1.30 por pasaje
 - NUNCA sugieras taxi, mototaxi u otro medio que no sea combi/bus de la lista
 - Si no es posible llegar con las rutas disponibles, dilo claramente
 - DEBES responder SIEMPRE en el formato exacto de abajo, sin excepciones
 - NO agregues explicaciones, saludos ni texto extra fuera del formato
-
+ 
 FORMATO DE RESPUESTA OBLIGATORIO:
-
-RUTAS: [CODIGO1, CODIGO2]
-
+ 
+RUTAS: [CODIGO1, CODIGO2, CODIGO3]
+ 
 1. Tome la combi CODIGO1 en [avenida de abordaje], cerca de [referencia], y bájese en [avenida de bajada], cerca de [referencia]
 2. Tome la combi CODIGO2 en [avenida de abordaje], cerca de [referencia], y bájese en [avenida de bajada], cerca de [referencia]
-
+3. Tome la combi CODIGO3 en [avenida de abordaje], cerca de [referencia], y bájese en [avenida de bajada], cerca de [referencia]
+ 
 ESTIMACION: X minutos aproximadamente
 COSTO TOTAL: S/X.XX (X combis x S/1.30)
-
-Si solo se necesita una combi, el formato es igual pero con un solo paso numerado.
+ 
+Puedes sugerir 1, 2, 3 o más combis (pasos numerados) dependiendo de cuántos transbordos se necesiten para hacer la ruta más rápida.
 Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas disponibles desde [origen] hasta [destino]."
 """.trimIndent()
 

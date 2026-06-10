@@ -7,6 +7,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -157,6 +158,7 @@ fun BusquedaSheet(
     onNuevaOptimizacion: () -> Unit,
     rutaColores: Map<String, String> = emptyMap(),
     rutaSentidos: Map<String, String> = emptyMap(),
+    rutaEtiquetas: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(),
     historialViewModel: HistorialViewModel = viewModel()
 ) {
@@ -372,13 +374,11 @@ fun BusquedaSheet(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             PreferenciaCard(Icons.Filled.AccessTime, "Menor tiempo", "Llega más rápido a tu destino", preferencia == "tiempo") { preferencia = "tiempo" }
                             PreferenciaCard(Icons.Filled.MonetizationOn, "Menor costo", "La ruta más económica", preferencia == "costo") { preferencia = "costo" }
-                            PreferenciaCard(Icons.Filled.SwapCalls, "Menos transbordos", "Ruta más directa, menos caminata", preferencia == "transbordos") { preferencia = "transbordos" }
                         }
                         Text(
                             when (preferencia) {
                                 "tiempo"      -> "Optimizando por: menor tiempo de viaje"
                                 "costo"       -> "Optimizando por: menor costo (S/1.30 por combi)"
-                                "transbordos" -> "Optimizando por: menos transbordos posibles"
                                 else -> ""
                             }, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = BusRed
                         )
@@ -401,7 +401,7 @@ fun BusquedaSheet(
                             }
                         }
                         is BusquedaState.Success -> {
-                            ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos)
+                            ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas)
                         }
                         is BusquedaState.Error -> {
                             Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
@@ -445,7 +445,8 @@ private fun ResultadoRutaTimeline(
     rutaParseada: RutaParseada,
     respuestaOriginal: String,
     rutaColores: Map<String, String>,
-    rutaSentidos: Map<String, String> = emptyMap()
+    rutaSentidos: Map<String, String> = emptyMap(),
+    rutaEtiquetas: Map<String, String> = emptyMap()
 ) {
     if (rutaParseada.segmentos.isEmpty()) {
         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
@@ -467,17 +468,22 @@ private fun ResultadoRutaTimeline(
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     rutaParseada.codigos.forEachIndexed { idx, codigo ->
                         if (idx > 0) Spacer(modifier = Modifier.width(20.dp))
-                        val color = rutaColores[codigo]?.let { parseHexColor(it) } ?: BusRed
-                        val sentido = rutaSentidos[codigo]
+                        val color = rutaColores.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value?.let { parseHexColor(it) } ?: BusRed
+                        val sentido = rutaSentidos.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Box(modifier = Modifier.width(22.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(color))
-                            Text(codigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
+                            val etiqueta = rutaEtiquetas.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value
+                            val displayCodigo = if (!etiqueta.isNullOrEmpty()) "$codigo \"$etiqueta\"" else codigo
+                            Text(displayCodigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
                             if (sentido != null) {
                                 Box(
                                     modifier = Modifier
@@ -564,7 +570,7 @@ private fun ResultadoRutaTimeline(
 
         rutaParseada.segmentos.forEachIndexed { index, segmento ->
             val esUltimo = index == rutaParseada.segmentos.lastIndex
-            SegmentoRutaCard(segmento, esUltimo, hayTransbordo = !esUltimo, rutaColores)
+            SegmentoRutaCard(segmento, esUltimo, hayTransbordo = !esUltimo, rutaColores, rutaEtiquetas)
         }
     }
 }
@@ -575,9 +581,10 @@ private fun SegmentoRutaCard(
     segmento: SegmentoRuta,
     esUltimo: Boolean,
     hayTransbordo: Boolean,
-    rutaColores: Map<String, String>
+    rutaColores: Map<String, String>,
+    rutaEtiquetas: Map<String, String> = emptyMap()
 ) {
-    val rutaColor      = rutaColores[segmento.codigoRuta]?.let { parseHexColor(it) } ?: BusDarkRed
+    val rutaColor      = rutaColores.entries.firstOrNull { it.key.trim().equals(segmento.codigoRuta.trim(), ignoreCase = true) }?.value?.let { parseHexColor(it) } ?: BusDarkRed
     val rutaColorLight = rutaColor.copy(alpha = 0.12f)
 
     Row(modifier = Modifier.fillMaxWidth()) {
@@ -616,8 +623,12 @@ private fun SegmentoRutaCard(
                         Text("${segmento.numero}", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     if (segmento.codigoRuta.isNotEmpty()) {
+                        val etiquetaSegmento = rutaEtiquetas.entries.firstOrNull { it.key.trim().equals(segmento.codigoRuta.trim(), ignoreCase = true) }?.value
                         Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(rutaColor).padding(horizontal = 12.dp, vertical = 4.dp)) {
                             Text(segmento.codigoRuta, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        if (!etiquetaSegmento.isNullOrEmpty()) {
+                            Text("\"$etiquetaSegmento\"", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
                         }
                     }
                 }

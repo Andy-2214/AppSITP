@@ -126,8 +126,7 @@ fun BusquedaCard(
 
     val preferenciaTexto = when (busqueda.preferencia) {
         "tiempo" -> "⏱️ Más rápido"
-        "costo" -> "💰 Más económico"
-        "transbordos" -> "🔀 Menos transbordos"
+        "costo", "transbordos" -> "💰 Más económico"
         else -> busqueda.preferencia
     }
 

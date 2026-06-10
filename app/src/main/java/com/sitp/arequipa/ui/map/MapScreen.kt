@@ -80,6 +80,7 @@ data class RutaMapa(
     val codigo: String = "",
     val empresa: String = "",
     val color: String = "#FF0000",
+    val etiqueta: String = "",
     val avenidas: String = "",           // recorrido IDA
     val avenidaVuelta: String = "",      // recorrido VUELTA
     val frecuencia: String = "",
@@ -94,6 +95,12 @@ data class TramoGuia(
     val esCaminata: Boolean = false
 )
 
+data class MarkerRutaGuia(
+    val posicion: LatLng,
+    val codigo: String,
+    val color: String
+)
+
 // ── Selecciona coordenadas IDA o VUELTA según la dirección del viaje ──────────
 // Devuelve el listado de coordenadas cuyo primer punto esté más cerca del origen.
 // Si la ruta solo tiene coordenadas de IDA (vuelta vacía), devuelve las de IDA.
@@ -104,40 +111,67 @@ fun elegirDireccion(
 ): List<Map<String, Double>> {
     if (ruta.coordenadasVuelta.isEmpty()) return ruta.coordenadas  // sin vuelta → IDA siempre
 
-    fun distSq(a: LatLng, b: LatLng): Double {
-        val dl = a.latitude  - b.latitude
-        val dn = a.longitude - b.longitude
+    fun distSq(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val dl = lat1 - lat2
+        val dn = lng1 - lng2
         return dl * dl + dn * dn
     }
 
-    // Primer y último punto de IDA
-    val idaPrimero  = ruta.coordenadas.firstOrNull()
-        ?.let { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
-    val idaUltimo   = ruta.coordenadas.lastOrNull()
-        ?.let { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
+    // Para IDA
+    val ptsIda = ruta.coordenadas
+    var idxOIda = 0
+    var idxDIda = 0
+    var minDistOIda = Double.MAX_VALUE
+    var minDistDIda = Double.MAX_VALUE
+    ptsIda.forEachIndexed { idx, pt ->
+        val lat = pt["lat"] ?: 0.0
+        val lng = pt["lng"] ?: 0.0
+        val dO = distSq(lat, lng, origenLatLng.latitude, origenLatLng.longitude)
+        if (dO < minDistOIda) {
+            minDistOIda = dO
+            idxOIda = idx
+        }
+        val dD = distSq(lat, lng, destinoLatLng.latitude, destinoLatLng.longitude)
+        if (dD < minDistDIda) {
+            minDistDIda = dD
+            idxDIda = idx
+        }
+    }
+    val isForwardIda = idxOIda <= idxDIda
+    val distSumIda = minDistOIda + minDistDIda
 
-    // Primer y último punto de VUELTA
-    val vueltaPrimero = ruta.coordenadasVuelta.firstOrNull()
-        ?.let { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
-    val vueltaUltimo  = ruta.coordenadasVuelta.lastOrNull()
-        ?.let { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
+    // Para VUELTA
+    val ptsVuelta = ruta.coordenadasVuelta
+    var idxOVuelta = 0
+    var idxDVuelta = 0
+    var minDistOVuelta = Double.MAX_VALUE
+    var minDistDVuelta = Double.MAX_VALUE
+    ptsVuelta.forEachIndexed { idx, pt ->
+        val lat = pt["lat"] ?: 0.0
+        val lng = pt["lng"] ?: 0.0
+        val dO = distSq(lat, lng, origenLatLng.latitude, origenLatLng.longitude)
+        if (dO < minDistOVuelta) {
+            minDistOVuelta = dO
+            idxOVuelta = idx
+        }
+        val dD = distSq(lat, lng, destinoLatLng.latitude, destinoLatLng.longitude)
+        if (dD < minDistDVuelta) {
+            minDistDVuelta = dD
+            idxDVuelta = idx
+        }
+    }
+    val isForwardVuelta = idxOVuelta <= idxDVuelta
+    val distSumVuelta = minDistOVuelta + minDistDVuelta
 
-    if (idaPrimero == null || vueltaPrimero == null) return ruta.coordenadas
-
-    // Distancia del origen al inicio de IDA vs inicio de VUELTA
-    val distIdaOrigen    = distSq(idaPrimero,    origenLatLng)
-    val distVueltaOrigen = distSq(vueltaPrimero, origenLatLng)
-
-    // También comparar fin de cada sentido con el destino para desempatar
-    val distIdaDestino    = idaUltimo?.let    { distSq(it, destinoLatLng) } ?: Double.MAX_VALUE
-    val distVueltaDestino = vueltaUltimo?.let { distSq(it, destinoLatLng) } ?: Double.MAX_VALUE
-
-    // Preferir el sentido cuyo inicio esté más cerca del origen
-    // y cuyo fin esté más cerca del destino
-    val scoreIda    = distIdaOrigen    + distIdaDestino
-    val scoreVuelta = distVueltaOrigen + distVueltaDestino
-
-    return if (scoreVuelta < scoreIda) ruta.coordenadasVuelta else ruta.coordenadas
+    // Decidir:
+    return when {
+        isForwardIda && !isForwardVuelta -> ruta.coordenadas
+        isForwardVuelta && !isForwardIda -> ruta.coordenadasVuelta
+        else -> {
+            // Si ambos son forward o ambos son backward, elegimos el que pase más cerca del origen/destino
+            if (distSumVuelta < distSumIda) ruta.coordenadasVuelta else ruta.coordenadas
+        }
+    }
 }
 
 fun calcularTramo(
@@ -178,7 +212,12 @@ fun calcularTramo(
     return listOf(desdeLatLng) + subtramo + listOf(hastaLatLng)
 }
 
-fun crearTramos(segmento: List<LatLng>, colorBus: Color): List<TramoGuia> {
+fun crearTramos(
+    segmento: List<LatLng>,
+    colorBus: Color,
+    agregarInicio: Boolean = true,
+    agregarFin: Boolean = true
+): List<TramoGuia> {
     if (segmento.size < 3) return listOf(TramoGuia(segmento, colorBus, false))
     val tramos = mutableListOf<TramoGuia>()
     val pInicio = segmento.first()
@@ -186,16 +225,53 @@ fun crearTramos(segmento: List<LatLng>, colorBus: Color): List<TramoGuia> {
     val pBusFin = segmento[segmento.size - 2]
     val pFin = segmento.last()
     val busSegment = segmento.subList(1, segmento.size - 1)
-    if (pInicio != pBusInicio) {
+    if (agregarInicio && pInicio != pBusInicio) {
         tramos.add(TramoGuia(listOf(pInicio, pBusInicio), Color.Gray, true))
     }
     if (busSegment.size >= 2) {
         tramos.add(TramoGuia(busSegment, colorBus, false))
     }
-    if (pFin != pBusFin) {
+    if (agregarFin && pFin != pBusFin) {
         tramos.add(TramoGuia(listOf(pBusFin, pFin), Color.Gray, true))
     }
     return tramos
+}
+
+fun encontrarAcercamiento(
+    coords1: List<Map<String, Double>>,
+    coords2: List<Map<String, Double>>
+): Triple<LatLng, LatLng, Double> {
+    val pts1 = coords1.mapNotNull { c ->
+        val la = c["lat"] ?: return@mapNotNull null
+        val ln = c["lng"] ?: return@mapNotNull null
+        LatLng(la, ln)
+    }
+    val pts2 = coords2.mapNotNull { c ->
+        val la = c["lat"] ?: return@mapNotNull null
+        val ln = c["lng"] ?: return@mapNotNull null
+        LatLng(la, ln)
+    }
+    if (pts1.isEmpty() || pts2.isEmpty()) {
+        return Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+    }
+
+    var bestPt1 = pts1.first()
+    var bestPt2 = pts2.first()
+    var minDist = Double.MAX_VALUE
+
+    for (p1 in pts1) {
+        for (p2 in pts2) {
+            val dlat = p1.latitude - p2.latitude
+            val dlng = p1.longitude - p2.longitude
+            val d = dlat * dlat + dlng * dlng
+            if (d < minDist) {
+                minDist = d
+                bestPt1 = p1
+                bestPt2 = p2
+            }
+        }
+    }
+    return Triple(bestPt1, bestPt2, minDist)
 }
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
@@ -264,6 +340,10 @@ fun MapScreen(
     var mostrarComentarios by remember { mutableStateOf(false) }
     // Guarda la dirección elegida por cada ruta: rutaId -> true (VUELTA) / false (IDA)
     var direccionPorRuta by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    // Guarda las coordenadas seleccionadas para cada código recomendado en la búsqueda activa
+    var coordsRecomendadas by remember { mutableStateOf<Map<String, List<Map<String, Double>>>>(emptyMap()) }
+    var marcadoresRuta by remember { mutableStateOf<List<MarkerRutaGuia>>(emptyList()) }
+    var marcadoresTransbordo by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
     var origenLatLng by remember { mutableStateOf(origenInicial?.toLatLng()) }
@@ -289,6 +369,7 @@ fun MapScreen(
                         codigo          = doc.getString("codigo")        ?: "",
                         empresa         = doc.getString("empresa")       ?: "Sin empresa",
                         color           = doc.getString("color")         ?: "#FF0000",
+                        etiqueta        = doc.getString("etiqueta") ?: doc.getString("etiquetas") ?: "",
                         avenidas        = doc.getString("avenidas")      ?: "",
                         avenidaVuelta   = doc.getString("avenidaVuelta") ?: "",
                         frecuencia      = doc.getString("frecuencia")    ?: "",
@@ -303,41 +384,114 @@ fun MapScreen(
 
     // ── Recalcula tramos cuando rutas llega después de onRutaEncontrada ──────
     LaunchedEffect(rutas, codigosPendientes) {
-        if (rutas.isNotEmpty() && codigosPendientes.isNotEmpty() &&
-            origenLatLng != null && destinoLatLng != null) {
-
-            println("DEBUG recalculando tramos con ${rutas.size} rutas y codigos $codigosPendientes")
-            val rutasRecomendadas = rutas.filter { ruta ->
-                codigosPendientes.any { it.equals(ruta.codigo, ignoreCase = true) }
-            }
-            println("DEBUG rutasRecomendadas: ${rutasRecomendadas.map { it.codigo }}")
-
-            val tramos = mutableListOf<TramoGuia>()
-            when {
-                rutasRecomendadas.size == 1 -> {
-                    val ruta  = rutasRecomendadas[0]
-                    // ← usa el sentido correcto (IDA o VUELTA)
-                    val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
-                    val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
-                    println("DEBUG segmento size: ${segmento.size}")
-                    if (segmento.isNotEmpty())
-                        tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
-                }
-                rutasRecomendadas.size >= 2 -> {
-                    val ruta1  = rutasRecomendadas[0]
-                    val ruta2  = rutasRecomendadas[1]
-                    val coords1 = elegirDireccion(ruta1, origenLatLng!!, destinoLatLng!!)
-                    val coords2 = elegirDireccion(ruta2, origenLatLng!!, destinoLatLng!!)
-                    val seg1 = calcularTramo(coords1, origenLatLng!!, destinoLatLng!!)
-                    val transbordo = seg1.lastOrNull() ?: return@LaunchedEffect
-                    val seg2 = calcularTramo(coords2, transbordo, destinoLatLng!!)
-                    if (seg1.isNotEmpty()) tramos.addAll(crearTramos(seg1, parseColor(ruta1.color)))
-                    if (seg2.isNotEmpty()) tramos.addAll(crearTramos(seg2, parseColor(ruta2.color)))
-                }
-            }
-            tramosGuia = tramos
-            guiaActiva = true
+        if (rutas.isEmpty() || codigosPendientes.isEmpty() ||
+            origenLatLng == null || destinoLatLng == null) {
+            coordsRecomendadas = emptyMap()
+            tramosGuia = emptyList()
+            marcadoresRuta = emptyList()
+            marcadoresTransbordo = emptyList()
+            guiaActiva = false
+            return@LaunchedEffect
         }
+
+        println("DEBUG recalculando tramos con ${rutas.size} rutas y codigos $codigosPendientes")
+        val rutasRecomendadas = codigosPendientes.mapNotNull { codigo ->
+            rutas.firstOrNull { it.codigo.equals(codigo, ignoreCase = true) }
+        }
+        println("DEBUG rutasRecomendadas: ${rutasRecomendadas.map { it.codigo }}")
+
+        val tramos = mutableListOf<TramoGuia>()
+        val n = rutasRecomendadas.size
+        val nextCoordsRecomendadas = mutableMapOf<String, List<Map<String, Double>>>()
+        val nextDireccion = direccionPorRuta.toMutableMap()
+        val nextMarcadoresRuta = mutableListOf<MarkerRutaGuia>()
+        val nextMarcadoresTransbordo = mutableListOf<LatLng>()
+
+        if (n == 1) {
+            val ruta = rutasRecomendadas[0]
+            val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
+            nextCoordsRecomendadas[ruta.codigo.trim()] = coords
+            
+            val esVuelta = ruta.coordenadasVuelta.isNotEmpty() && coords == ruta.coordenadasVuelta
+            nextDireccion[ruta.id] = esVuelta
+
+            val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
+            if (segmento.isNotEmpty()) {
+                tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
+                val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
+                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
+            }
+        } else if (n >= 2) {
+            val coordsList = mutableListOf<List<Map<String, Double>>>()
+            val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
+
+            // 1. Elegir dirección para la primera ruta
+            val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
+            coordsList.add(coords0)
+            nextCoordsRecomendadas[rutasRecomendadas[0].codigo.trim()] = coords0
+            
+            val esVuelta0 = rutasRecomendadas[0].coordenadasVuelta.isNotEmpty() && coords0 == rutasRecomendadas[0].coordenadasVuelta
+            nextDireccion[rutasRecomendadas[0].id] = esVuelta0
+
+            // 2. Propagar para encontrar acercamientos de rutas intermedias
+            for (i in 1 until n) {
+                val prevCoords = coordsList[i - 1]
+                val rCurrent = rutasRecomendadas[i]
+
+                val (transPrevIda, transCurrIda, minDistIda) = encontrarAcercamiento(prevCoords, rCurrent.coordenadas)
+                val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
+                    encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
+                } else {
+                    Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+                }
+
+                val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
+                    Triple(transPrevVuelta, transCurrVuelta, rCurrent.coordenadasVuelta)
+                } else {
+                    Triple(transPrevIda, transCurrIda, rCurrent.coordenadas)
+                }
+
+                coordsList.add(coordsCurrent)
+                transferPoints.add(Pair(transPrev, transCurr))
+                
+                nextCoordsRecomendadas[rCurrent.codigo.trim()] = coordsCurrent
+                val esVueltaCurrent = rCurrent.coordenadasVuelta.isNotEmpty() && coordsCurrent == rCurrent.coordenadasVuelta
+                nextDireccion[rCurrent.id] = esVueltaCurrent
+            }
+
+            // 3. Construir tramos para cada una de las N rutas
+            for (i in 0 until n) {
+                val r = rutasRecomendadas[i]
+                val coords = coordsList[i]
+                val startPt = if (i == 0) origenLatLng!! else transferPoints[i - 1].second
+                val endPt = if (i == n - 1) destinoLatLng!! else transferPoints[i].first
+
+                val segmento = calcularTramo(coords, startPt, endPt)
+                if (segmento.isNotEmpty()) {
+                    tramos.addAll(
+                        crearTramos(
+                            segmento = segmento,
+                            colorBus = parseColor(r.color),
+                            agregarInicio = (i == 0),
+                            agregarFin = (i == n - 1)
+                        )
+                    )
+                    val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
+                    val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
+                    nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                }
+            }
+
+            for (i in 0 until n - 1) {
+                nextMarcadoresTransbordo.add(transferPoints[i].first)
+            }
+        }
+        coordsRecomendadas = nextCoordsRecomendadas
+        direccionPorRuta = nextDireccion
+        tramosGuia = tramos
+        marcadoresRuta = nextMarcadoresRuta
+        marcadoresTransbordo = nextMarcadoresTransbordo
+        guiaActiva = true
     }
 
     LaunchedEffect(locationPermission.status.isGranted) {
@@ -528,8 +682,14 @@ fun MapScreen(
                         rutas.filter { ruta ->
                             rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) }
                         }.forEach { ruta ->
-                            // Mostrar IDA tenue como contexto del recorrido completo
-                            val puntos = ruta.coordenadas.mapNotNull { coord ->
+                            // Usar el sentido correcto precalculado (o fallback a elegirDireccion si no está)
+                            val coordsUsadas = coordsRecomendadas[ruta.codigo.trim()]
+                                ?: (if (origenLatLng != null && destinoLatLng != null) {
+                                    elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
+                                } else {
+                                    ruta.coordenadas
+                                })
+                            val puntos = coordsUsadas.mapNotNull { coord ->
                                 val lat = coord["lat"] ?: return@mapNotNull null
                                 val lng = coord["lng"] ?: return@mapNotNull null
                                 LatLng(lat, lng)
@@ -557,6 +717,32 @@ fun MapScreen(
                                         pattern = listOf(com.google.android.gms.maps.model.Dot(), com.google.android.gms.maps.model.Gap(15f))
                                     )
                                 }
+                            }
+                        }
+
+                        // ── Capa 3: marcadores de ruta y transbordo (badges y combis) ─────
+                        if (guiaActiva) {
+                            val iconCombi = remember(context) { crearBitmapCombiIcon(context) }
+                            
+                            marcadoresRuta.forEach { marcador ->
+                                val iconBadge = remember(context, marcador.codigo, marcador.color) {
+                                    crearBitmapCodigoRuta(context, marcador.codigo, marcador.color)
+                                }
+                                Marker(
+                                    state = MarkerState(position = marcador.posicion),
+                                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                                    icon = iconBadge,
+                                    title = "Ruta ${marcador.codigo}"
+                                )
+                            }
+                            
+                            marcadoresTransbordo.forEach { pos ->
+                                Marker(
+                                    state = MarkerState(position = pos),
+                                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                                    icon = iconCombi,
+                                    title = "Transbordo"
+                                )
                             }
                         }
                     }
@@ -709,32 +895,59 @@ fun MapScreen(
                     }
 
                     // ── Panel de búsqueda con animación ──────────────────
-                    val rutaColores = remember(rutas) { rutas.associate { it.codigo to it.color } }
+                    val rutaColores = remember(rutas) { rutas.associate { it.codigo.trim() to it.color } }
+                    val rutaEtiquetas = remember(rutas) { rutas.associate { it.codigo.trim() to it.etiqueta.trim() } }
                     // Sentido elegido por elegirDireccion() para cada código recomendado
                     val rutaSentidos = remember(rutas, codigosPendientes, origenLatLng, destinoLatLng) {
-                        if (origenLatLng == null || destinoLatLng == null) emptyMap<String, String>()
-                        else codigosPendientes.mapNotNull { codigo ->
-                            val ruta = rutas.firstOrNull {
-                                it.codigo.equals(codigo, ignoreCase = true)
-                            } ?: return@mapNotNull null
-                            val usaVuelta = ruta.coordenadasVuelta.isNotEmpty() && run {
-                                val primeroIda    = ruta.coordenadas.firstOrNull()       ?: return@run false
-                                val ultimoIda     = ruta.coordenadas.lastOrNull()        ?: return@run false
-                                val primeroVuelta = ruta.coordenadasVuelta.firstOrNull() ?: return@run false
-                                val ultimoVuelta  = ruta.coordenadasVuelta.lastOrNull()  ?: return@run false
-                                fun distSq(p: Map<String,Double>, lat: Double, lng: Double): Double {
-                                    val dl = (p["lat"] ?: 0.0) - lat
-                                    val dn = (p["lng"] ?: 0.0) - lng
-                                    return dl*dl + dn*dn
-                                }
-                                val oLat = origenLatLng!!.latitude;  val oLng = origenLatLng!!.longitude
-                                val dLat = destinoLatLng!!.latitude; val dLng = destinoLatLng!!.longitude
-                                val scoreIda    = distSq(primeroIda,    oLat, oLng) + distSq(ultimoIda,    dLat, dLng)
-                                val scoreVuelta = distSq(primeroVuelta, oLat, oLng) + distSq(ultimoVuelta, dLat, dLng)
-                                scoreVuelta < scoreIda
+                        val currentOrigen = origenLatLng
+                        val currentDestino = destinoLatLng
+                        if (currentOrigen == null || currentDestino == null || rutas.isEmpty() || codigosPendientes.isEmpty()) {
+                            emptyMap<String, String>()
+                        } else {
+                            val result = mutableMapOf<String, String>()
+                            val rutasRecomendadas = codigosPendientes.mapNotNull { codigo ->
+                                rutas.firstOrNull { it.codigo.equals(codigo, ignoreCase = true) }
                             }
-                            codigo to if (usaVuelta) "VUELTA" else "IDA"
-                        }.toMap()
+                            val n = rutasRecomendadas.size
+                            if (n == 1) {
+                                val r = rutasRecomendadas[0]
+                                val coords = elegirDireccion(r, currentOrigen, currentDestino)
+                                val esVuelta = r.coordenadasVuelta.isNotEmpty() && coords == r.coordenadasVuelta
+                                result[r.codigo.trim()] = if (esVuelta) "VUELTA" else "IDA"
+                            } else if (n >= 2) {
+                                val coordsList = mutableListOf<List<Map<String, Double>>>()
+
+                                // 1. Elegir dirección para la primera ruta
+                                val coords0 = elegirDireccion(rutasRecomendadas[0], currentOrigen, currentDestino)
+                                coordsList.add(coords0)
+                                val esVuelta0 = rutasRecomendadas[0].coordenadasVuelta.isNotEmpty() && coords0 == rutasRecomendadas[0].coordenadasVuelta
+                                result[rutasRecomendadas[0].codigo.trim()] = if (esVuelta0) "VUELTA" else "IDA"
+
+                                // 2. Propagar para encontrar acercamientos de rutas intermedias
+                                for (i in 1 until n) {
+                                    val prevCoords = coordsList[i - 1]
+                                    val rCurrent = rutasRecomendadas[i]
+
+                                    val (transPrevIda, transCurrIda, minDistIda) = encontrarAcercamiento(prevCoords, rCurrent.coordenadas)
+                                    val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
+                                        encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
+                                    } else {
+                                        Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+                                    }
+
+                                    val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
+                                        Triple(transPrevVuelta, transCurrVuelta, rCurrent.coordenadasVuelta)
+                                    } else {
+                                        Triple(transPrevIda, transCurrIda, rCurrent.coordenadas)
+                                    }
+
+                                    coordsList.add(coordsCurrent)
+                                    val esVueltaCurrent = rCurrent.coordenadasVuelta.isNotEmpty() && coordsCurrent == rCurrent.coordenadasVuelta
+                                    result[rCurrent.codigo.trim()] = if (esVueltaCurrent) "VUELTA" else "IDA"
+                                }
+                            }
+                            result
+                        }
                     }
                     AnimatedVisibility(
                         visible = mostrarBusqueda,
@@ -761,84 +974,97 @@ fun MapScreen(
 
                                 if (origenLatLng != null && destinoLatLng != null) {
                                     val tramos = mutableListOf<TramoGuia>()
-                                    val rutasRecomendadas = rutas.filter { ruta ->
-                                        codigos.any { it.equals(ruta.codigo, ignoreCase = true) }
+                                    val rutasRecomendadas = codigos.mapNotNull { codigo ->
+                                        rutas.firstOrNull { it.codigo.equals(codigo, ignoreCase = true) }
                                     }
 
-                                    fun distSqLL(a: LatLng, b: LatLng): Double {
-                                        val dlat = a.latitude  - b.latitude
-                                        val dlng = a.longitude - b.longitude
-                                        return dlat * dlat + dlng * dlng
-                                    }
+                                    val n = rutasRecomendadas.size
+                                    val nextMarcadoresRuta = mutableListOf<MarkerRutaGuia>()
+                                    val nextMarcadoresTransbordo = mutableListOf<LatLng>()
 
-                                    fun tramoCasiIdentico(r1: RutaMapa, r2: RutaMapa): Boolean {
-                                        val pts1 = r1.coordenadas.mapNotNull { c ->
-                                            val la = c["lat"] ?: return@mapNotNull null
-                                            val ln = c["lng"] ?: return@mapNotNull null
-                                            LatLng(la, ln)
+                                    if (n == 1) {
+                                        val ruta = rutasRecomendadas[0]
+                                        val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
+                                        val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
+                                        if (segmento.isNotEmpty()) {
+                                            tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
+                                            val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
+                                            nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
                                         }
-                                        val pts2 = r2.coordenadas.mapNotNull { c ->
-                                            val la = c["lat"] ?: return@mapNotNull null
-                                            val ln = c["lng"] ?: return@mapNotNull null
-                                            LatLng(la, ln)
-                                        }
-                                        if (pts1.isEmpty() || pts2.isEmpty()) return false
-                                        val TOL = 0.003 * 0.003
-                                        val mismoInicio = distSqLL(pts1.first(), pts2.first()) < TOL ||
-                                                distSqLL(pts1.first(), pts2.last())  < TOL
-                                        val mismoFin    = distSqLL(pts1.last(),  pts2.first()) < TOL ||
-                                                distSqLL(pts1.last(),  pts2.last())  < TOL
-                                        return mismoInicio && mismoFin
-                                    }
+                                    } else if (n >= 2) {
+                                        val coordsList = mutableListOf<List<Map<String, Double>>>()
+                                        val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
 
-                                    val rutasUnicas = rutasRecomendadas.fold(mutableListOf<RutaMapa>()) { acc, r ->
-                                        if (acc.none { tramoCasiIdentico(it, r) }) acc.add(r)
-                                        acc
-                                    }
+                                        // 1. Elegir dirección para la primera ruta
+                                        val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
+                                        coordsList.add(coords0)
 
-                                    when {
-                                        rutasUnicas.size == 1 -> {
-                                            val ruta   = rutasUnicas[0]
-                                            // ← elegir IDA o VUELTA según dirección del viaje
-                                            val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
-                                            val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
-                                            if (segmento.isNotEmpty())
-                                                tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
-                                        }
-                                        rutasUnicas.size >= 2 -> {
-                                            val ruta1   = rutasUnicas[0]
-                                            val ruta2   = rutasUnicas[1]
-                                            val coords1 = elegirDireccion(ruta1, origenLatLng!!, destinoLatLng!!)
-                                            val coords2 = elegirDireccion(ruta2, origenLatLng!!, destinoLatLng!!)
-                                            val segmento1 = calcularTramo(coords1, origenLatLng!!, destinoLatLng!!)
-                                            val transbordo = if (segmento1.isNotEmpty()) segmento1.last() else {
-                                                val pts1 = ruta1.coordenadas.mapNotNull { c ->
-                                                    val la = c["lat"] ?: return@mapNotNull null
-                                                    val ln = c["lng"] ?: return@mapNotNull null
-                                                    LatLng(la, ln)
-                                                }
-                                                pts1.minByOrNull { distSqLL(it, destinoLatLng!!) }
-                                                    ?: return@BusquedaSheet
+                                        // 2. Propagar para encontrar acercamientos de rutas intermedias
+                                        for (i in 1 until n) {
+                                            val prevCoords = coordsList[i - 1]
+                                            val rCurrent = rutasRecomendadas[i]
+
+                                            val (transPrevIda, transCurrIda, minDistIda) = encontrarAcercamiento(prevCoords, rCurrent.coordenadas)
+                                            val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
+                                                encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
+                                            } else {
+                                                Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
                                             }
-                                            val segmento2 = calcularTramo(coords2, transbordo, destinoLatLng!!)
-                                            if (segmento1.isNotEmpty())
-                                                tramos.addAll(crearTramos(segmento1, parseColor(ruta1.color)))
-                                            if (segmento2.isNotEmpty())
-                                                tramos.addAll(crearTramos(segmento2, parseColor(ruta2.color)))
+
+                                            val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
+                                                Triple(transPrevVuelta, transCurrVuelta, rCurrent.coordenadasVuelta)
+                                            } else {
+                                                Triple(transPrevIda, transCurrIda, rCurrent.coordenadas)
+                                            }
+
+                                            coordsList.add(coordsCurrent)
+                                            transferPoints.add(Pair(transPrev, transCurr))
+                                        }
+
+                                        // 3. Construir tramos para cada una de las N rutas
+                                        for (i in 0 until n) {
+                                            val r = rutasRecomendadas[i]
+                                            val coords = coordsList[i]
+                                            val startPt = if (i == 0) origenLatLng!! else transferPoints[i - 1].second
+                                            val endPt = if (i == n - 1) destinoLatLng!! else transferPoints[i].first
+
+                                            val segmento = calcularTramo(coords, startPt, endPt)
+                                            if (segmento.isNotEmpty()) {
+                                                tramos.addAll(
+                                                    crearTramos(
+                                                        segmento = segmento,
+                                                        colorBus = parseColor(r.color),
+                                                        agregarInicio = (i == 0),
+                                                        agregarFin = (i == n - 1)
+                                                    )
+                                                )
+                                                val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
+                                                val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
+                                                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                                            }
+                                        }
+
+                                        for (i in 0 until n - 1) {
+                                            nextMarcadoresTransbordo.add(transferPoints[i].first)
                                         }
                                     }
                                     tramosGuia = tramos
+                                    marcadoresRuta = nextMarcadoresRuta
+                                    marcadoresTransbordo = nextMarcadoresTransbordo
                                     guiaActiva = true
                                 }
                             },
                             onNuevaOptimizacion = {
                                 rutasResaltadas   = emptySet()
                                 tramosGuia        = emptyList()
+                                marcadoresRuta    = emptyList()
+                                marcadoresTransbordo = emptyList()
                                 codigosPendientes = emptyList()
                                 guiaActiva        = true
                             },
                             rutaColores  = rutaColores,
-                            rutaSentidos = rutaSentidos
+                            rutaSentidos = rutaSentidos,
+                            rutaEtiquetas = rutaEtiquetas
                         )
                     }
 
@@ -944,6 +1170,41 @@ fun RutasSheetContent(
     onToggleRuta: (String) -> Unit,
     onDetalleRuta: (RutaMapa) -> Unit
 ) {
+    // 1. Extraer cuencas disponibles y agrupar rutas de forma dinámica
+    val cuencasMap = remember(rutas) {
+        val regex = Regex("""C-\d+""", RegexOption.IGNORE_CASE)
+        fun obtenerCuenca(r: RutaMapa): String {
+            val matchNombre = regex.find(r.nombre)?.value
+            if (matchNombre != null) return matchNombre.uppercase()
+            val matchEtiqueta = regex.find(r.etiqueta)?.value
+            if (matchEtiqueta != null) return matchEtiqueta.uppercase()
+            val matchCodigo = regex.find(r.codigo)?.value
+            if (matchCodigo != null) return matchCodigo.uppercase()
+            return "OTROS"
+        }
+
+        rutas.groupBy { obtenerCuenca(it) }
+    }
+
+    // 2. Ordenar las cuencas numéricamente: C-1, C-2, ..., C-10, y OTROS al final
+    val cuencasOrdenadas = remember(cuencasMap) {
+        cuencasMap.keys.sortedWith(Comparator { a, b ->
+            val numA = a.substringAfter("-").toIntOrNull()
+            val numB = b.substringAfter("-").toIntOrNull()
+            when {
+                numA != null && numB != null -> numA.compareTo(numB)
+                numA != null -> -1
+                numB != null -> 1
+                else -> a.compareTo(b)
+            }
+        })
+    }
+
+    // 3. Estado de la cuenca seleccionada (por defecto la primera cuenca o vacía si no hay)
+    var cuencaSeleccionada by remember(cuencasOrdenadas) {
+        mutableStateOf(cuencasOrdenadas.firstOrNull() ?: "")
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
@@ -962,15 +1223,99 @@ fun RutasSheetContent(
                 CircularProgressIndicator(color = NavRed)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth()
-                    .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.75f),
-                contentPadding = PaddingValues(vertical = 8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.7f)
             ) {
-                items(rutas) { ruta ->
-                    RutaListItem(ruta = ruta, isVisible = rutasVisibles.contains(ruta.id),
-                        onToggle = { onToggleRuta(ruta.id) }, onDetalle = { onDetalleRuta(ruta) })
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Color(0xFFF5F5F5))
+                // ── Columna Izquierda: Menú de Cuencas (Ancho fijo, scrollable) ──
+                Column(
+                    modifier = Modifier
+                        .width(96.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xFFF9F9F9))
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    cuencasOrdenadas.forEach { cuenca ->
+                        val esSeleccionada = cuenca == cuencaSeleccionada
+                        val numRutas = cuencasMap[cuenca]?.size ?: 0
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { cuencaSeleccionada = cuenca }
+                                .background(if (esSeleccionada) Color.White else Color.Transparent)
+                                .padding(vertical = 14.dp, horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (esSeleccionada) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .width(4.dp)
+                                        .height(28.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(NavRed)
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = cuenca,
+                                    fontSize = 15.sp,
+                                    fontWeight = if (esSeleccionada) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (esSeleccionada) NavRed else NavSecondary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = if (numRutas == 1) "1 ruta" else "$numRutas rutas",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    color = if (esSeleccionada) NavRed.copy(alpha = 0.7f) else NavGray
+                                )
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFEEEEEE), modifier = Modifier.fillMaxWidth())
+                    }
+                }
+
+                // Separador vertical fino
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xFFE0E0E0))
+                )
+
+                // ── Columna Derecha: Listado de Rutas de la Cuenca Seleccionada ──
+                val rutasDeCuenca = cuencasMap[cuencaSeleccionada] ?: emptyList()
+                if (rutasDeCuenca.isEmpty()) {
+                    Box(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No hay rutas en esta cuenca", fontSize = 13.sp, color = NavGray)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentPadding = PaddingValues(vertical = 6.dp)
+                    ) {
+                        items(rutasDeCuenca) { ruta ->
+                            RutaListItem(
+                                ruta = ruta,
+                                isVisible = rutasVisibles.contains(ruta.id),
+                                onToggle = { onToggleRuta(ruta.id) },
+                                onDetalle = { onDetalleRuta(ruta) },
+                                hideCuenca = true
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                color = Color(0xFFF5F5F5)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -983,7 +1328,8 @@ fun RutaListItem(
     ruta: RutaMapa,
     isVisible: Boolean,
     onToggle: () -> Unit,
-    onDetalle: () -> Unit = {}
+    onDetalle: () -> Unit = {},
+    hideCuenca: Boolean = false
 ) {
     val bgColor = try { Color(android.graphics.Color.parseColor(ruta.color)) } catch (e: Exception) { NavRed }
     Row(
@@ -1000,7 +1346,16 @@ fun RutaListItem(
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(ruta.nombre.ifEmpty { ruta.codigo }, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            val titleText = if (hideCuenca) {
+                if (ruta.etiqueta.isNotEmpty()) "\"${ruta.etiqueta}\"" else ruta.codigo
+            } else {
+                if (ruta.etiqueta.isNotEmpty()) {
+                    "\"${ruta.etiqueta}\" - ${ruta.nombre.ifEmpty { "Sin Nombre" }}"
+                } else {
+                    ruta.nombre.ifEmpty { ruta.codigo }
+                }
+            }
+            Text(titleText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 color = if (isVisible) NavRed else NavSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val subtitulo = buildString {
                 if (ruta.empresa.isNotEmpty()) append(ruta.empresa)
@@ -1076,7 +1431,12 @@ fun RutaDetalleSheet(
                         color = Color.White, maxLines = 1, overflow = TextOverflow.Clip)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("${ruta.codigo} ${ruta.nombre}".trim(), fontSize = 17.sp,
+                    val detailTitle = if (ruta.etiqueta.isNotEmpty()) {
+                        "\"${ruta.etiqueta}\" - ${ruta.nombre}".trim()
+                    } else {
+                        ruta.nombre.trim().ifEmpty { ruta.codigo }
+                    }
+                    Text(detailTitle, fontSize = 17.sp,
                         fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
                     if (ruta.empresa.isNotEmpty())
                         Text("Emp: ${ruta.empresa}", fontSize = 12.sp, color = NavGray)
@@ -1283,4 +1643,184 @@ fun RutaDetalleSheet(
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+fun distMetrosAprox(a: com.google.android.gms.maps.model.LatLng, b: com.google.android.gms.maps.model.LatLng): Double {
+    val latMid = (a.latitude + b.latitude) / 2.0 * 0.017453292519943295
+    val dLat = (b.latitude - a.latitude) * 111132.954
+    val dLng = (b.longitude - a.longitude) * 111132.954 * Math.cos(latMid)
+    return Math.sqrt(dLat * dLat + dLng * dLng)
+}
+
+fun obtenerPuntoMasAdelante(
+    segmento: List<com.google.android.gms.maps.model.LatLng>,
+    startIndex: Int,
+    metros: Double
+): com.google.android.gms.maps.model.LatLng {
+    if (segmento.isEmpty()) return com.google.android.gms.maps.model.LatLng(0.0, 0.0)
+    if (startIndex >= segmento.lastIndex) return segmento.last()
+    
+    // Evitar que el marcador pase del penúltimo punto (fin del recorrido en combi)
+    val maxIndex = (segmento.size - 2).coerceAtLeast(startIndex)
+    
+    var currentPt = segmento[startIndex]
+    var accumulatedDist = 0.0
+    
+    for (i in startIndex + 1..maxIndex) {
+        val nextPt = segmento[i]
+        val d = distMetrosAprox(currentPt, nextPt)
+        accumulatedDist += d
+        currentPt = nextPt
+        if (accumulatedDist >= metros) {
+            return nextPt
+        }
+    }
+    return segmento[maxIndex]
+}
+
+fun crearBitmapCodigoRuta(
+    context: android.content.Context,
+    codigo: String,
+    colorHex: String
+): com.google.android.gms.maps.model.BitmapDescriptor {
+    val scale = context.resources.displayMetrics.density
+    val paddingX = (8 * scale).toInt()
+    val paddingY = (4 * scale).toInt()
+    val fontSize = 12 * scale
+    
+    val textPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        textSize = fontSize
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    
+    val bounds = android.graphics.Rect()
+    textPaint.getTextBounds(codigo, 0, codigo.length, bounds)
+    val textWidth = bounds.width()
+    val textHeight = bounds.height()
+    
+    val pillHeight = (textHeight + paddingY * 2)
+    val pillWidth = (textWidth + paddingX * 2).coerceAtLeast(pillHeight)
+    
+    val bitmap = android.graphics.Bitmap.createBitmap(pillWidth, pillHeight, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    
+    val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = try {
+            android.graphics.Color.parseColor(colorHex)
+        } catch (e: Exception) {
+            android.graphics.Color.RED
+        }
+        style = android.graphics.Paint.Style.FILL
+    }
+    
+    val strokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 1.5f * scale
+    }
+    
+    val rect = android.graphics.RectF(0f, 0f, pillWidth.toFloat(), pillHeight.toFloat())
+    val radius = pillHeight.toFloat() / 2f
+    
+    canvas.drawRoundRect(rect, radius, radius, bgPaint)
+    canvas.drawRoundRect(rect, radius, radius, strokePaint)
+    
+    val x = pillWidth / 2f
+    val y = (pillHeight / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f)
+    canvas.drawText(codigo, x, y, textPaint)
+    
+    return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
+}
+
+fun crearBitmapCombiIcon(context: android.content.Context): com.google.android.gms.maps.model.BitmapDescriptor {
+    val scale = context.resources.displayMetrics.density
+    val size = (32 * scale).toInt()
+    
+    val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bitmap)
+    
+    val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = android.graphics.Paint.Style.FILL
+    }
+    
+    val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#C62828")
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 2 * scale
+    }
+    
+    val cx = size / 2f
+    val cy = size / 2f
+    val radius = (size / 2f) - (1 * scale)
+    canvas.drawCircle(cx, cy, radius, bgPaint)
+    canvas.drawCircle(cx, cy, radius, borderPaint)
+    
+    val combiW = 16 * scale
+    val combiH = 14 * scale
+    val combiLeft = cx - (combiW / 2)
+    val combiTop = cy - (combiH / 2) - (1 * scale)
+    
+    val wheelW = 3 * scale
+    val wheelH = 2 * scale
+    val wheelPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.DKGRAY
+        style = android.graphics.Paint.Style.FILL
+    }
+    canvas.drawRect(
+        combiLeft + 2 * scale,
+        combiTop + combiH,
+        combiLeft + 2 * scale + wheelW,
+        combiTop + combiH + wheelH,
+        wheelPaint
+    )
+    canvas.drawRect(
+        combiLeft + combiW - 2 * scale - wheelW,
+        combiTop + combiH,
+        combiLeft + combiW - 2 * scale,
+        combiTop + combiH + wheelH,
+        wheelPaint
+    )
+    
+    val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#C62828")
+        style = android.graphics.Paint.Style.FILL
+    }
+    val bodyRect = android.graphics.RectF(combiLeft, combiTop, combiLeft + combiW, combiTop + combiH)
+    canvas.drawRoundRect(bodyRect, 3 * scale, 3 * scale, bodyPaint)
+    
+    val glassPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#E0F7FA")
+        style = android.graphics.Paint.Style.FILL
+    }
+    val glassRect = android.graphics.RectF(
+        combiLeft + 1.5f * scale,
+        combiTop + 1.5f * scale,
+        combiLeft + combiW - 1.5f * scale,
+        combiTop + combiH / 2f
+    )
+    canvas.drawRoundRect(glassRect, 1.5f * scale, 1.5f * scale, glassPaint)
+    
+    val lightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#FFEB3B")
+        style = android.graphics.Paint.Style.FILL
+    }
+    canvas.drawCircle(combiLeft + 3f * scale, combiTop + combiH - 4f * scale, 1.5f * scale, lightPaint)
+    canvas.drawCircle(combiLeft + combiW - 3f * scale, combiTop + combiH - 4f * scale, 1.5f * scale, lightPaint)
+    
+    val grillePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#B0BEC5")
+        style = android.graphics.Paint.Style.FILL
+    }
+    val grilleRect = android.graphics.RectF(
+        combiLeft + 5f * scale,
+        combiTop + combiH - 4.5f * scale,
+        combiLeft + combiW - 5f * scale,
+        combiTop + combiH - 3.5f * scale
+    )
+    canvas.drawRect(grilleRect, grillePaint)
+    
+    return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
 }
