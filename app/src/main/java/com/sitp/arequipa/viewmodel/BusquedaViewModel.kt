@@ -248,22 +248,29 @@ class BusquedaViewModel : ViewModel() {
                         path: List<Map<String, Any>>
                     ): Double {
                         if (path.isEmpty()) return Double.MAX_VALUE
-                        if (path.size == 1) {
-                            return distanciaMetros(origenLat, origenLng, destinoLat, destinoLng)
-                        }
-                        if (path.size == 2) {
+                        val dOrigen = path.first()["minDistOrigen"] as Double
+                        val dDestino = path.last()["minDistDestino"] as Double
+
+                        val distVehiculo = if (path.size == 1) {
+                            distanciaMetros(origenLat, origenLng, destinoLat, destinoLng)
+                        } else if (path.size == 2) {
                             val i = obtenerPuntoInterseccion(path[0], path[1]) ?: return Double.MAX_VALUE
-                            return distanciaMetros(origenLat, origenLng, i.first, i.second) +
+                            distanciaMetros(origenLat, origenLng, i.first, i.second) +
                                    distanciaMetros(i.first, i.second, destinoLat, destinoLng)
-                        }
-                        if (path.size == 3) {
+                        } else if (path.size == 3) {
                             val i1 = obtenerPuntoInterseccion(path[0], path[1]) ?: return Double.MAX_VALUE
                             val i2 = obtenerPuntoInterseccion(path[1], path[2]) ?: return Double.MAX_VALUE
-                            return distanciaMetros(origenLat, origenLng, i1.first, i1.second) +
+                            distanciaMetros(origenLat, origenLng, i1.first, i1.second) +
                                    distanciaMetros(i1.first, i1.second, i2.first, i2.second) +
                                    distanciaMetros(i2.first, i2.second, destinoLat, destinoLng)
+                        } else {
+                            Double.MAX_VALUE
                         }
-                        return Double.MAX_VALUE
+
+                        if (distVehiculo == Double.MAX_VALUE) return Double.MAX_VALUE
+
+                        // Ponderar la distancia de caminata multiplicándola por 3.0 (caminar es mucho más lento que ir en vehículo)
+                        return distVehiculo + (dOrigen + dDestino) * 3.0
                     }
 
                     // Encontrar rutas intermedias (de conexión)
@@ -335,10 +342,24 @@ class BusquedaViewModel : ViewModel() {
                         }
                     }
 
+                    val exactThreshold = 15.0
                     val elegida = if (preferencia == "costo") {
-                        candidatas.sortedWith(compareBy({ it.path.size }, { it.tiempoEstimado })).firstOrNull()
+                        candidatas.sortedWith(
+                            compareByDescending<RutaCandidata> {
+                                val isExactOrigen = (it.path.first()["minDistOrigen"] as Double) <= exactThreshold
+                                val isExactDestino = (it.path.last()["minDistDestino"] as Double) <= exactThreshold
+                                isExactOrigen && isExactDestino
+                            }.thenBy { it.path.size }
+                             .thenBy { it.tiempoEstimado }
+                        ).firstOrNull()
                     } else {
-                        candidatas.minByOrNull { it.tiempoEstimado }
+                        candidatas.sortedWith(
+                            compareByDescending<RutaCandidata> {
+                                val isExactOrigen = (it.path.first()["minDistOrigen"] as Double) <= exactThreshold
+                                val isExactDestino = (it.path.last()["minDistDestino"] as Double) <= exactThreshold
+                                isExactOrigen && isExactDestino
+                            }.thenBy { it.tiempoEstimado }
+                        ).firstOrNull()
                     }
 
                     if (elegida != null && consultaExtra.isBlank()) {
@@ -397,8 +418,16 @@ class BusquedaViewModel : ViewModel() {
                         mapOf(
                             "type" to "ia",
                             "rutasFinales" to rutasFinales,
-                            "rutasOrigen" to rutasOrigenOrdenadas.map { it["codigo"].toString() },
-                            "rutasDestino" to rutasDestinoOrdenadas.map { it["codigo"].toString() },
+                            "rutasOrigen" to rutasOrigenOrdenadas.map { 
+                                val cod = it["codigo"].toString()
+                                val dist = it["minDistOrigen"] as Double
+                                if (dist <= 15.0) "$cod (COINCIDENCIA EXACTA)" else cod
+                            },
+                            "rutasDestino" to rutasDestinoOrdenadas.map { 
+                                val cod = it["codigo"].toString()
+                                val dist = it["minDistDestino"] as Double
+                                if (dist <= 15.0) "$cod (COINCIDENCIA EXACTA)" else cod
+                            },
                             "esDirecta" to (preferencia == "costo" && rutasDirectas.isNotEmpty())
                         )
                     }

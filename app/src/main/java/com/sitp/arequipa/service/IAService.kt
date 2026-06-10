@@ -72,6 +72,7 @@ NUNCA agregues una segunda ruta si hay una directa disponible."""
 DATOS DE PROXIMIDAD GEOGRÁFICA (calculados por GPS, son exactos, ordenados de más cercana a más lejana):
 - Rutas que pasan cerca del ORIGEN ($origen): ${if (rutasOrigen.isEmpty()) "ninguna directa" else rutasOrigen.joinToString(", ")}
 - Rutas que pasan cerca del DESTINO ($destino): ${if (rutasDestino.isEmpty()) "ninguna directa" else rutasDestino.joinToString(", ")}
+- Las rutas marcadas con "(COINCIDENCIA EXACTA)" son las que pasan exactamente por los puntos solicitados por el usuario.
 - REGLA 1: El usuario DEBE abordar una ruta del grupo ORIGEN (prioriza enormemente las primeras de la lista por estar físicamente más cerca) y bajar cerca del DESTINO (prioriza las primeras de la lista).
 - REGLA 2: $reglaDirecta"""
         } else ""
@@ -91,6 +92,7 @@ $seccionExtra
  
 REGLAS OBLIGATORIAS:
 - Todas las combis cobran S/1.30 por pasaje
+- REGLA DE COINCIDENCIA EXACTA: Si existe una ruta o combinación de rutas marcada como "(COINCIDENCIA EXACTA)" tanto en el grupo de ORIGEN como en el de DESTINO, estás OBLIGADO a recomendar dicha opción, incluso si hay otras rutas que estén muy cerca pero no pasen exactamente por el punto.
 - NUNCA sugieras taxi, mototaxi u otro medio que no sea combi/bus de la lista
 - Si no es posible llegar con las rutas disponibles, dilo claramente
 - DEBES responder SIEMPRE en el formato exacto de abajo, sin excepciones
