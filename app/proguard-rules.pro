@@ -19,3 +19,16 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Reglas R8 del proyecto ---
+# Conservar metadatos para Firebase y stack traces legibles.
+-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*,AnnotationDefault
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Room genera el código con KSP (no usa reflection sobre modelos propios),
+# Firestore se mapea a mano (DocumentSnapshot.get*/getString), así que no se
+# requieren keeps de modelos. Los SDKs de Google/Firebase aportan sus propias
+# consumer rules en sus AAR.
+
+# Iconos de Material (material-icons-extended) no referenciados se eliminan solos.
