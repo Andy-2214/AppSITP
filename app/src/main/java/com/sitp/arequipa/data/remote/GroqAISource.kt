@@ -124,6 +124,8 @@ Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas dispon
             try {
                 val url = URL("https://api.groq.com/openai/v1/chat/completions")
                 val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 30_000
 
                 connection.requestMethod = "POST"
                 connection.setRequestProperty("Content-Type", "application/json")
