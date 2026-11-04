@@ -77,8 +77,9 @@ private val NavGray      = Color(0xFF9E9E9E)
 // â”€â”€ Modelo â€” ahora incluye campos de VUELTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 data class RutaMapa(
     val id: String = "",
-    val nombre: String = "",
     val codigo: String = "",
+    val codigoCombi: String = "",        // lo que ve el usuario (como en el parabrisas)
+    val cuenca: String = "",
     val empresa: String = "",
     val color: String = "#FF0000",
     val etiqueta: String = "",
@@ -99,6 +100,7 @@ data class TramoGuia(
 data class MarkerRutaGuia(
     val posicion: LatLng,
     val codigo: String,
+    val codigoCombi: String,
     val color: String
 )
 
@@ -367,8 +369,9 @@ fun MapScreen(
                 rutas = listaRutas.map { r ->
                     RutaMapa(
                         id                = r.codigo,
-                        nombre            = r.nombre,
                         codigo            = r.codigo,
+                        codigoCombi       = r.codigoCombi,
+                        cuenca            = r.cuenca,
                         empresa           = r.empresa,
                         color             = r.color,
                         etiqueta          = r.etiqueta,
@@ -428,7 +431,7 @@ fun MapScreen(
             if (segmento.isNotEmpty()) {
                 tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                 val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
-                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
+                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, codigoCombi = ruta.codigoCombi, color = ruta.color))
             }
         } else if (n >= 2) {
             val coordsList = mutableListOf<List<Map<String, Double>>>()
@@ -487,7 +490,7 @@ fun MapScreen(
                     )
                     val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
                     val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
-                    nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                    nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, codigoCombi = r.codigoCombi, color = r.color))
                 }
             }
 
@@ -734,14 +737,14 @@ fun MapScreen(
                             val iconCombi = remember(context) { crearBitmapCombiIcon(context) }
                             
                             marcadoresRuta.forEach { marcador ->
-                                val iconBadge = remember(context, marcador.codigo, marcador.color) {
-                                    crearBitmapCodigoRuta(context, marcador.codigo, marcador.color)
+                                val iconBadge = remember(context, marcador.codigoCombi, marcador.color) {
+                                    crearBitmapCodigoRuta(context, marcador.codigoCombi, marcador.color)
                                 }
                                 Marker(
                                     state = MarkerState(position = marcador.posicion),
                                     anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
                                     icon = iconBadge,
-                                    title = "Ruta ${marcador.codigo}"
+                                    title = "Ruta ${marcador.codigoCombi}"
                                 )
                             }
                             
@@ -906,6 +909,7 @@ fun MapScreen(
                     // â”€â”€ Panel de bÃºsqueda con animaciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     val rutaColores = remember(rutas) { rutas.associate { it.codigo.trim() to it.color } }
                     val rutaEtiquetas = remember(rutas) { rutas.associate { it.codigo.trim() to it.etiqueta.trim() } }
+                    val rutaCombis = remember(rutas) { rutas.associate { it.codigo.trim() to it.codigoCombi } }
                     // Sentido elegido por elegirDireccion() para cada cÃ³digo recomendado
                     val rutaSentidos = remember(rutas, codigosPendientes, origenLatLng, destinoLatLng) {
                         val currentOrigen = origenLatLng
@@ -998,7 +1002,7 @@ fun MapScreen(
                                         if (segmento.isNotEmpty()) {
                                             tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                                             val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
-                                            nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
+                                            nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, codigoCombi = ruta.codigoCombi, color = ruta.color))
                                         }
                                     } else if (n >= 2) {
                                         val coordsList = mutableListOf<List<Map<String, Double>>>()
@@ -1049,7 +1053,7 @@ fun MapScreen(
                                                 )
                                                 val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
                                                 val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
-                                                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                                                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, codigoCombi = r.codigoCombi, color = r.color))
                                             }
                                         }
 
@@ -1073,14 +1077,15 @@ fun MapScreen(
                             },
                             rutaColores  = rutaColores,
                             rutaSentidos = rutaSentidos,
-                            rutaEtiquetas = rutaEtiquetas
+                            rutaEtiquetas = rutaEtiquetas,
+                            rutaCombis = rutaCombis
                         )
                     }
 
                     if (mostrarComentarios && rutaDetalle != null) {
                         ComentariosSheet(
                             rutaId     = rutaDetalle!!.id,
-                            rutaNombre = rutaDetalle!!.nombre,
+                            rutaNombre = "${rutaDetalle!!.codigoCombi} – ${rutaDetalle!!.empresa}",
                             rutaCodigo = rutaDetalle!!.codigo,
                             onDismiss  = { mostrarComentarios = false }
                         )
@@ -1181,25 +1186,14 @@ fun RutasSheetContent(
 ) {
     // 1. Extraer cuencas disponibles y agrupar rutas de forma dinÃ¡mica
     val cuencasMap = remember(rutas) {
-        val regex = Regex("""C-\d+""", RegexOption.IGNORE_CASE)
-        fun obtenerCuenca(r: RutaMapa): String {
-            val matchNombre = regex.find(r.nombre)?.value
-            if (matchNombre != null) return matchNombre.uppercase()
-            val matchEtiqueta = regex.find(r.etiqueta)?.value
-            if (matchEtiqueta != null) return matchEtiqueta.uppercase()
-            val matchCodigo = regex.find(r.codigo)?.value
-            if (matchCodigo != null) return matchCodigo.uppercase()
-            return "OTROS"
-        }
-
-        rutas.groupBy { obtenerCuenca(it) }
+        rutas.groupBy { it.cuenca.ifBlank { "OTROS" } }
     }
 
-    // 2. Ordenar las cuencas numÃ©ricamente: C-1, C-2, ..., C-10, y OTROS al final
+    // 2. Ordenar: C2, C3, ..., C11 por numero; despues ALB, CHI y OTROS por nombre
     val cuencasOrdenadas = remember(cuencasMap) {
         cuencasMap.keys.sortedWith(Comparator { a, b ->
-            val numA = a.substringAfter("-").toIntOrNull()
-            val numB = b.substringAfter("-").toIntOrNull()
+            val numA = a.removePrefix("C").toIntOrNull()
+            val numB = b.removePrefix("C").toIntOrNull()
             when {
                 numA != null && numB != null -> numA.compareTo(numB)
                 numA != null -> -1
@@ -1269,7 +1263,7 @@ fun RutasSheetContent(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = cuenca,
+                                    text = etiquetaCuenca(cuenca),
                                     fontSize = 15.sp,
                                     fontWeight = if (esSeleccionada) FontWeight.Bold else FontWeight.Medium,
                                     color = if (esSeleccionada) NavRed else NavSecondary
@@ -1350,18 +1344,18 @@ fun RutaListItem(
                 .background(bgColor.copy(alpha = if (isVisible) 1f else 0.7f)),
             contentAlignment = Alignment.Center
         ) {
-            Text(ruta.codigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
+            Text(ruta.codigoCombi, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
                 maxLines = 1, overflow = TextOverflow.Clip)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             val titleText = if (hideCuenca) {
-                if (ruta.etiqueta.isNotEmpty()) "\"${ruta.etiqueta}\"" else ruta.codigo
+                if (ruta.etiqueta.isNotEmpty()) "\"${ruta.etiqueta}\"" else ruta.codigoCombi
             } else {
                 if (ruta.etiqueta.isNotEmpty()) {
-                    "\"${ruta.etiqueta}\" - ${ruta.nombre.ifEmpty { "Sin Nombre" }}"
+                    "\"${ruta.etiqueta}\" - ${etiquetaCuenca(ruta.cuenca)}"
                 } else {
-                    ruta.nombre.ifEmpty { ruta.codigo }
+                    ruta.codigoCombi
                 }
             }
             Text(titleText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
@@ -1435,14 +1429,14 @@ fun RutaDetalleSheet(
                 Box(modifier = Modifier.width(52.dp).height(42.dp)
                     .clip(RoundedCornerShape(10.dp)).background(badgeColor),
                     contentAlignment = Alignment.Center) {
-                    Text(ruta.codigo, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    Text(ruta.codigoCombi, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         color = Color.White, maxLines = 1, overflow = TextOverflow.Clip)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     val detailTitle = if (ruta.etiqueta.isNotEmpty()) {
-                        "\"${ruta.etiqueta}\" - ${ruta.nombre}".trim()
+                        "\"${ruta.etiqueta}\""
                     } else {
-                        ruta.nombre.trim().ifEmpty { ruta.codigo }
+                        ruta.codigoCombi.trim().ifEmpty { ruta.codigo }
                     }
                     Text(detailTitle, fontSize = 17.sp,
                         fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
@@ -1627,7 +1621,7 @@ fun RutaDetalleSheet(
                             Button(
                                 onClick = {
                                     comentarioViewModel.publicarComentario(
-                                        rutaId = ruta.id, rutaNombre = ruta.nombre,
+                                        rutaId = ruta.id, rutaNombre = "${ruta.codigoCombi} – ${ruta.empresa}",
                                         rutaCodigo = ruta.codigo, texto = textoComentario)
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -1832,3 +1826,7 @@ fun crearBitmapCombiIcon(context: android.content.Context): com.google.android.g
     
     return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
 }
+
+// C8 -> "C-8"; ALB, CHI y OTROS se muestran tal cual
+private fun etiquetaCuenca(cuenca: String): String =
+    Regex("^C(\\d+)$").replace(cuenca, "C-$1")

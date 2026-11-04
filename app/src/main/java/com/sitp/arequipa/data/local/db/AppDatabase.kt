@@ -5,11 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.sitp.arequipa.data.local.entity.CoordenadaEntity
+import com.sitp.arequipa.data.local.entity.CuencaEntity
 import com.sitp.arequipa.data.local.entity.RutaEntity
 
 @Database(
-    entities = [RutaEntity::class, CoordenadaEntity::class],
-    version = 2,
+    entities = [CuencaEntity::class, RutaEntity::class, CoordenadaEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -52,7 +52,8 @@ class BuscarRutaUseCase {
 
             mapOf(
                 "codigo" to r.codigo,
-                "nombre" to r.nombre,
+                "codigoCombi" to r.codigoCombi,
+                "cuenca" to r.cuenca,
                 "empresa" to r.empresa,
                 "avenidas" to r.avenidas,
                 "avenidaVuelta" to r.avenidaVuelta,
@@ -284,7 +285,8 @@ class BuscarRutaUseCase {
         val rutasFinales = candidatasUnion.map { r ->
             mapOf<String, Any>(
                 "codigo" to r["codigo"].toString(),
-                "nombre" to r["nombre"].toString(),
+                "codigoCombi" to r["codigoCombi"].toString(),
+                "cuenca" to r["cuenca"].toString(),
                 "empresa" to r["empresa"].toString(),
                 "avenidas" to r["avenidas"].toString().take(80),
                 "avenidaVuelta" to r["avenidaVuelta"].toString().take(80)

@@ -3,6 +3,7 @@ package com.sitp.arequipa.data.repository
 import android.content.Context
 import com.sitp.arequipa.data.local.db.AppDatabase
 import com.sitp.arequipa.data.local.entity.CoordenadaEntity
+import com.sitp.arequipa.data.local.entity.CuencaEntity
 import com.sitp.arequipa.data.local.entity.RutaEntity
 import com.sitp.arequipa.data.remote.FirestoreRouteSource
 import com.sitp.arequipa.domain.model.Ruta
@@ -22,13 +23,15 @@ class RouteRepositoryImpl private constructor(
     override fun obtenerRutas(): Flow<List<Ruta>> {
         return rutaDao.obtenerTodasLasRutasConCoordenadas().map { lista ->
             lista.map { r ->
+                // Aqui se arma la vista desnormalizada: empresa y color vienen de la cuenca (join)
                 Ruta(
                     codigo = r.ruta.codigo,
-                    nombre = r.ruta.nombre,
-                    empresa = r.ruta.empresa,
+                    codigoCombi = r.ruta.codigoCombi.ifBlank { r.ruta.codigo },
+                    cuenca = r.ruta.cuenca,
+                    empresa = r.cuencaInfo?.empresa.orEmpty(),
                     avenidas = r.ruta.avenidas,
                     avenidaVuelta = r.ruta.avenidaVuelta,
-                    color = r.ruta.color,
+                    color = r.cuencaInfo?.color?.ifBlank { null } ?: "#FF0000",
                     etiqueta = r.ruta.etiqueta,
                     frecuencia = r.ruta.frecuencia,
                     coordsIda = r.coordenadas
@@ -49,33 +52,50 @@ class RouteRepositoryImpl private constructor(
             val documents = remoteSource.descargarRutas()
             if (documents.isEmpty()) return@withContext
 
-            // 1. Verificar si las versiones locales coinciden con las remotas
+            // Las cuencas (empresa y color) viven en su propia coleccion
+            val cuencasRemotas = remoteSource.descargarCuencas().map { doc ->
+                CuencaEntity(
+                    cuenca = doc.getString("cuenca") ?: doc.id,
+                    empresa = doc.getString("empresa") ?: "",
+                    color = doc.getString("color") ?: ""
+                )
+            }
+
+            // 1. Verificar si lo local coincide con lo remoto (rutas por version, cuencas por contenido)
             val rutasLocales = rutaDao.obtenerRutasSync().associate { it.codigo to it.version }
-            val hayCambios = rutasLocales.isEmpty() ||
+            val cuencasLocales = rutaDao.obtenerCuencasSync().associateBy { it.cuenca }
+            val rutasCambiaron = rutasLocales.isEmpty() ||
                 rutasLocales.size != documents.size ||
                 documents.any { doc ->
                     val codigo = doc.getString("codigo") ?: return@any true
                     val versionRemota = doc.getLong("version") ?: 1L
                     rutasLocales[codigo] != versionRemota
                 }
+            val cuencasCambiaron = cuencasLocales.size != cuencasRemotas.size ||
+                cuencasRemotas.any { cuencasLocales[it.cuenca] != it }
 
-            if (!hayCambios) {
-                println("DEBUG RouteRepository: Rutas locales ya sincronizadas (versiones coinciden). Omitiendo reescritura de Room.")
+            if (!rutasCambiaron && !cuencasCambiaron) {
+                println("DEBUG RouteRepository: Rutas y cuencas locales ya sincronizadas. Omitiendo reescritura de Room.")
                 return@withContext
             }
 
-            println("DEBUG RouteRepository: Actualización de rutas detectada. Sincronizando con Room SQLite...")
+            println("DEBUG RouteRepository: Actualización detectada. Sincronizando con Room SQLite...")
 
+            val cuencasValidas = cuencasRemotas.map { it.cuenca }.toSet()
             val rutasEntities = mutableListOf<RutaEntity>()
             val coordenadasEntities = mutableListOf<CoordenadaEntity>()
 
             for (doc in documents) {
                 val codigo = doc.getString("codigo") ?: continue
-                val nombre = doc.getString("nombre") ?: ""
-                val empresa = doc.getString("empresa") ?: ""
+                val cuenca = doc.getString("cuenca") ?: ""
+                // Si la cuenca no existe, la llave foranea haria fallar toda la transaccion
+                if (cuenca !in cuencasValidas) {
+                    println("DEBUG RouteRepository: Ruta $codigo descartada, su cuenca '$cuenca' no existe en 'cuencas'.")
+                    continue
+                }
+                val codigoCombi = doc.getString("codigoCombi") ?: ""
                 val avenidas = doc.getString("avenidas") ?: ""
                 val avenidaVuelta = doc.getString("avenidaVuelta") ?: ""
-                val color = doc.getString("color") ?: ""
                 val etiqueta = doc.getString("etiqueta") ?: doc.getString("etiquetas") ?: ""
                 val frecuencia = doc.getString("frecuencia") ?: ""
                 val version = doc.getLong("version") ?: 1L
@@ -83,11 +103,10 @@ class RouteRepositoryImpl private constructor(
                 rutasEntities.add(
                     RutaEntity(
                         codigo = codigo,
-                        nombre = nombre,
-                        empresa = empresa,
+                        codigoCombi = codigoCombi,
+                        cuenca = cuenca,
                         avenidas = avenidas,
                         avenidaVuelta = avenidaVuelta,
-                        color = color,
                         etiqueta = etiqueta,
                         frecuencia = frecuencia,
                         version = version
@@ -97,8 +116,8 @@ class RouteRepositoryImpl private constructor(
                 @Suppress("UNCHECKED_CAST")
                 val coordsIdaRaw = doc.get("coordenadas") as? List<Map<String, Any>> ?: emptyList()
                 coordsIdaRaw.forEachIndexed { index, map ->
-                    val lat = map["lat"] as? Double
-                    val lng = map["lng"] as? Double
+                    val lat = (map["lat"] as? Number)?.toDouble()
+                    val lng = (map["lng"] as? Number)?.toDouble()
                     if (lat != null && lng != null) {
                         coordenadasEntities.add(
                             CoordenadaEntity(
@@ -115,8 +134,8 @@ class RouteRepositoryImpl private constructor(
                 @Suppress("UNCHECKED_CAST")
                 val coordsVueltaRaw = doc.get("coordenadasVuelta") as? List<Map<String, Any>> ?: emptyList()
                 coordsVueltaRaw.forEachIndexed { index, map ->
-                    val lat = map["lat"] as? Double
-                    val lng = map["lng"] as? Double
+                    val lat = (map["lat"] as? Number)?.toDouble()
+                    val lng = (map["lng"] as? Number)?.toDouble()
                     if (lat != null && lng != null) {
                         coordenadasEntities.add(
                             CoordenadaEntity(
@@ -132,8 +151,8 @@ class RouteRepositoryImpl private constructor(
             }
 
             if (rutasEntities.isNotEmpty()) {
-                rutaDao.actualizarCache(rutasEntities, coordenadasEntities)
-                println("DEBUG RouteRepository: Room SQLite actualizado con ${rutasEntities.size} rutas y ${coordenadasEntities.size} coordenadas.")
+                rutaDao.actualizarCache(cuencasRemotas, rutasEntities, coordenadasEntities)
+                println("DEBUG RouteRepository: Room SQLite actualizado con ${cuencasRemotas.size} cuencas, ${rutasEntities.size} rutas y ${coordenadasEntities.size} coordenadas.")
             }
         } catch (e: Exception) {
             e.printStackTrace()
