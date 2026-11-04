@@ -9,6 +9,9 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
+/** Modelo de Groq que usa la app. Si Groq lo da de baja, solo se cambia aquí. */
+private const val MODELO_GROQ = "openai/gpt-oss-20b"
+
 class GroqAISource {
 
     private val db = FirebaseFirestore.getInstance()
@@ -133,15 +136,21 @@ Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas dispon
                 connection.doOutput = true
 
                 val body = JSONObject().apply {
-                    put("model", "llama-3.1-8b-instant")
+                    // llama-3.1-8b-instant se dio de baja en Groq el 16/08/2026;
+                    // el reemplazo recomendado es openai/gpt-oss-20b (modelo de razonamiento).
+                    put("model", MODELO_GROQ)
                     put("messages", JSONArray().apply {
                         put(JSONObject().apply {
                             put("role", "user")
                             put("content", prompt)
                         })
                     })
-                    put("max_tokens", 400)  // respuesta corta y formateada
-                    put("temperature", 0.1)
+                    // En los modelos de razonamiento el límite incluye los tokens de "pensar";
+                    // con 400 la respuesta podía llegar vacía, por eso el margen.
+                    put("max_completion_tokens", 1500)
+                    put("reasoning_effort", "low")      // tarea simple y con formato fijo
+                    put("include_reasoning", false)     // no devolver el razonamiento
+                    put("temperature", 0.5)
                 }.toString()
 
                 OutputStreamWriter(connection.outputStream).use { it.write(body) }
@@ -152,10 +161,11 @@ Si no hay ruta posible, escribe solo: "No es posible llegar con las rutas dispon
                 if (responseCode == 200) {
                     val response = connection.inputStream.bufferedReader().readText()
                     val json = JSONObject(response)
-                    json.getJSONArray("choices")
+                    val mensaje = json.getJSONArray("choices")
                         .getJSONObject(0)
                         .getJSONObject("message")
-                        .getString("content")
+                    val contenido = if (mensaje.isNull("content")) "" else mensaje.getString("content")
+                    contenido.ifBlank { "La IA no devolvió una respuesta. Intenta de nuevo." }
                 } else if (responseCode == 429) {
                     "La IA está saturada, espera unos segundos e intenta de nuevo."
                 } else {
