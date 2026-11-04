@@ -34,10 +34,12 @@ class GroqAISource {
         val rutasTexto = rutas.joinToString("\n") { ruta ->
             val ida = ruta["avenidas"]?.toString() ?: ""
             val vuelta = ruta["avenidaVuelta"]?.toString() ?: ""
+            // El codigo es la llave exacta; la combi y la empresa dan contexto a la IA
+            val cabecera = "${ruta["codigo"]} (combi ${ruta["codigoCombi"]}, ${ruta["empresa"]})"
             if (vuelta.isNotBlank() && vuelta != ida) {
-                "${ruta["codigo"]}: $ida / $vuelta"
+                "$cabecera: $ida / $vuelta"
             } else {
-                "${ruta["codigo"]}: $ida"
+                "$cabecera: $ida"
             }
         }
 
@@ -92,6 +94,7 @@ $seccionExtra
  
 REGLAS OBLIGATORIAS:
 - Todas las combis cobran S/1.30 por pasaje
+- En RUTAS y en cada paso usa SIEMPRE el código exacto de la lista (ej.: LA-C8), nunca solo la letra de la combi
 - REGLA DE COINCIDENCIA EXACTA: Si existe una ruta o combinación de rutas marcada como "(COINCIDENCIA EXACTA)" tanto en el grupo de ORIGEN como en el de DESTINO, estás OBLIGADO a recomendar dicha opción, incluso si hay otras rutas que estén muy cerca pero no pasen exactamente por el punto.
 - NUNCA sugieras taxi, mototaxi u otro medio que no sea combi/bus de la lista
 - Si no es posible llegar con las rutas disponibles, dilo claramente

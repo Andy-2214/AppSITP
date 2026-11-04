@@ -6,6 +6,11 @@ import androidx.room.Relation
 data class RutaConCoordenadas(
     @Embedded val ruta: RutaEntity,
     @Relation(
+        parentColumn = "cuenca",
+        entityColumn = "cuenca"
+    )
+    val cuencaInfo: CuencaEntity?,
+    @Relation(
         parentColumn = "codigo",
         entityColumn = "rutaCodigo"
     )

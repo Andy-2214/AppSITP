@@ -90,7 +90,7 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
                 texto.matches(Regex("^[\\d.,]+\\s*\\(.*\\)$"))
         if (!contieneRuta || esCostoOEstimacion) return@mapNotNull null
 
-        var codigo = Regex("""(?:combi|bus|ruta)\s+([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)""", RegexOption.IGNORE_CASE)
+        var codigo = Regex("""(?:combi|bus|ruta)\s+([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)""", RegexOption.IGNORE_CASE)
             .find(texto)?.groupValues?.get(1) ?: ""
 
         if (codigo.isEmpty() || !codigos.any { it.equals(codigo, ignoreCase = true) }) {
@@ -167,6 +167,7 @@ fun BusquedaSheet(
     rutaColores: Map<String, String> = emptyMap(),
     rutaSentidos: Map<String, String> = emptyMap(),
     rutaEtiquetas: Map<String, String> = emptyMap(),
+    rutaCombis: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(factory = provideViewModelFactory()),
     historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory())
 ) {
@@ -409,7 +410,7 @@ fun BusquedaSheet(
                             }
                         }
                         is BusquedaState.Success -> {
-                            ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas)
+                            ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas, rutaCombis)
                         }
                         is BusquedaState.Error -> {
                             Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
@@ -454,7 +455,8 @@ private fun ResultadoRutaTimeline(
     respuestaOriginal: String,
     rutaColores: Map<String, String>,
     rutaSentidos: Map<String, String> = emptyMap(),
-    rutaEtiquetas: Map<String, String> = emptyMap()
+    rutaEtiquetas: Map<String, String> = emptyMap(),
+    rutaCombis: Map<String, String> = emptyMap()
 ) {
     if (rutaParseada.segmentos.isEmpty()) {
         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
@@ -490,7 +492,8 @@ private fun ResultadoRutaTimeline(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Box(modifier = Modifier.width(22.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(color))
                             val etiqueta = rutaEtiquetas.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value
-                            val displayCodigo = if (!etiqueta.isNullOrEmpty()) "$codigo \"$etiqueta\"" else codigo
+                            val combi = rutaCombis.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value ?: codigo
+                            val displayCodigo = if (!etiqueta.isNullOrEmpty()) "$combi \"$etiqueta\"" else combi
                             Text(displayCodigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
                             if (sentido != null) {
                                 Box(
@@ -578,7 +581,7 @@ private fun ResultadoRutaTimeline(
 
         rutaParseada.segmentos.forEachIndexed { index, segmento ->
             val esUltimo = index == rutaParseada.segmentos.lastIndex
-            SegmentoRutaCard(segmento, esUltimo, hayTransbordo = !esUltimo, rutaColores, rutaEtiquetas)
+            SegmentoRutaCard(segmento, esUltimo, hayTransbordo = !esUltimo, rutaColores, rutaEtiquetas, rutaCombis)
         }
     }
 }
@@ -590,10 +593,14 @@ private fun SegmentoRutaCard(
     esUltimo: Boolean,
     hayTransbordo: Boolean,
     rutaColores: Map<String, String>,
-    rutaEtiquetas: Map<String, String> = emptyMap()
+    rutaEtiquetas: Map<String, String> = emptyMap(),
+    rutaCombis: Map<String, String> = emptyMap()
 ) {
     val rutaColor      = rutaColores.entries.firstOrNull { it.key.trim().equals(segmento.codigoRuta.trim(), ignoreCase = true) }?.value?.let { parseHexColor(it) } ?: BusDarkRed
     val rutaColorLight = rutaColor.copy(alpha = 0.12f)
+    // El usuario ve la combi (LA), no el codigo interno (LA-C8)
+    val combiSegmento = rutaCombis.entries.firstOrNull { it.key.trim().equals(segmento.codigoRuta.trim(), ignoreCase = true) }?.value ?: segmento.codigoRuta
+    val abordarMostrado = if (segmento.codigoRuta.isNotEmpty()) segmento.abordarTexto.replace(segmento.codigoRuta, combiSegmento, ignoreCase = true) else segmento.abordarTexto
 
     Row(modifier = Modifier.fillMaxWidth()) {
         Box(modifier = Modifier.width(52.dp), contentAlignment = Alignment.TopCenter) {
@@ -633,7 +640,7 @@ private fun SegmentoRutaCard(
                     if (segmento.codigoRuta.isNotEmpty()) {
                         val etiquetaSegmento = rutaEtiquetas.entries.firstOrNull { it.key.trim().equals(segmento.codigoRuta.trim(), ignoreCase = true) }?.value
                         Box(modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(rutaColor).padding(horizontal = 12.dp, vertical = 4.dp)) {
-                            Text(segmento.codigoRuta, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(combiSegmento, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                         if (!etiquetaSegmento.isNullOrEmpty()) {
                             Text("\"$etiquetaSegmento\"", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
@@ -644,7 +651,7 @@ private fun SegmentoRutaCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.RadioButtonUnchecked, null, tint = rutaColor, modifier = Modifier.size(18.dp).offset(y = 2.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(segmento.abordarTexto, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A), lineHeight = 18.sp)
+                        Text(abordarMostrado, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A), lineHeight = 18.sp)
                         if (segmento.abordarDetalle.isNotEmpty())
                             Text(segmento.abordarDetalle, fontSize = 12.sp, color = BusGray, lineHeight = 16.sp, modifier = Modifier.padding(top = 2.dp))
                     }

@@ -12,4 +12,9 @@ class FirestoreRouteSource {
         val snapshot = db.collection("rutas").get().await()
         return snapshot.documents
     }
+
+    suspend fun descargarCuencas(): List<DocumentSnapshot> {
+        val snapshot = db.collection("cuencas").get().await()
+        return snapshot.documents
+    }
 }

@@ -2,7 +2,8 @@ package com.sitp.arequipa.domain.model
 
 data class Ruta(
     val codigo: String,
-    val nombre: String,
+    val codigoCombi: String,
+    val cuenca: String,
     val empresa: String,
     val avenidas: String,
     val avenidaVuelta: String,

@@ -68,17 +68,18 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// â”€â”€ Paleta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Paleta ──────────────────────────────────────────────────────────────────
 private val NavRed       = Color(0xFFC62828)
 private val NavSecondary = Color(0xFF424242)
 private val NavNeutral   = Color(0xFFF5F5F5)
 private val NavGray      = Color(0xFF9E9E9E)
 
-// â”€â”€ Modelo â€” ahora incluye campos de VUELTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Modelo — ahora incluye campos de VUELTA ───────────────────────────────────
 data class RutaMapa(
     val id: String = "",
-    val nombre: String = "",
     val codigo: String = "",
+    val codigoCombi: String = "",        // lo que ve el usuario (como en el parabrisas)
+    val cuenca: String = "",
     val empresa: String = "",
     val color: String = "#FF0000",
     val etiqueta: String = "",
@@ -89,7 +90,7 @@ data class RutaMapa(
     val coordenadasVuelta: List<Map<String, Double>> = emptyList()  // polyline VUELTA
 )
 
-// â”€â”€ GuÃ­a visual GPS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Guía visual GPS ───────────────────────────────────────────────────────────
 data class TramoGuia(
     val puntos: List<LatLng>,
     val color: Color,
@@ -99,18 +100,19 @@ data class TramoGuia(
 data class MarkerRutaGuia(
     val posicion: LatLng,
     val codigo: String,
+    val codigoCombi: String,
     val color: String
 )
 
-// â”€â”€ Selecciona coordenadas IDA o VUELTA segÃºn la direcciÃ³n del viaje â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Devuelve el listado de coordenadas cuyo primer punto estÃ© mÃ¡s cerca del origen.
-// Si la ruta solo tiene coordenadas de IDA (vuelta vacÃ­a), devuelve las de IDA.
+// ── Selecciona coordenadas IDA o VUELTA según la dirección del viaje ──────────
+// Devuelve el listado de coordenadas cuyo primer punto esté más cerca del origen.
+// Si la ruta solo tiene coordenadas de IDA (vuelta vacía), devuelve las de IDA.
 fun elegirDireccion(
     ruta: RutaMapa,
     origenLatLng: LatLng,
     destinoLatLng: LatLng
 ): List<Map<String, Double>> {
-    if (ruta.coordenadasVuelta.isEmpty()) return ruta.coordenadas  // sin vuelta â†’ IDA siempre
+    if (ruta.coordenadasVuelta.isEmpty()) return ruta.coordenadas  // sin vuelta → IDA siempre
 
     fun distSq(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
         val dl = lat1 - lat2
@@ -169,7 +171,7 @@ fun elegirDireccion(
         isForwardIda && !isForwardVuelta -> ruta.coordenadas
         isForwardVuelta && !isForwardIda -> ruta.coordenadasVuelta
         else -> {
-            // Si ambos son forward o ambos son backward, elegimos el que pase mÃ¡s cerca del origen/destino
+            // Si ambos son forward o ambos son backward, elegimos el que pase más cerca del origen/destino
             if (distSumVuelta < distSumIda) ruta.coordenadasVuelta else ruta.coordenadas
         }
     }
@@ -275,7 +277,7 @@ fun encontrarAcercamiento(
     return Triple(bestPt1, bestPt2, minDist)
 }
 
-// â”€â”€ Utilidades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Utilidades ───────────────────────────────────────────────────────────────
 @SuppressLint("MissingPermission")
 fun obtenerUbicacion(
     context: android.content.Context,
@@ -306,10 +308,10 @@ fun parseColor(hex: String): Color = try {
     Color(android.graphics.Color.parseColor(hex))
 } catch (e: Exception) { Color.Red }
 
-// â”€â”€ Tabs del nav inferior â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tabs del nav inferior ────────────────────────────────────────────────────
 private enum class NavTab { MAPA, HISTORIAL, PERFIL }
 
-// â”€â”€ Pantalla principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Pantalla principal ───────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MapScreen(
@@ -367,8 +369,9 @@ fun MapScreen(
                 rutas = listaRutas.map { r ->
                     RutaMapa(
                         id                = r.codigo,
-                        nombre            = r.nombre,
                         codigo            = r.codigo,
+                        codigoCombi       = r.codigoCombi,
+                        cuenca            = r.cuenca,
                         empresa           = r.empresa,
                         color             = r.color,
                         etiqueta          = r.etiqueta,
@@ -391,7 +394,7 @@ fun MapScreen(
         }
     }
 
-    // â”€â”€ Recalcula tramos cuando rutas llega despuÃ©s de onRutaEncontrada â”€â”€â”€â”€â”€â”€
+    // ── Recalcula tramos cuando rutas llega después de onRutaEncontrada ──────
     LaunchedEffect(rutas, codigosPendientes) {
         if (rutas.isEmpty() || codigosPendientes.isEmpty() ||
             origenLatLng == null || destinoLatLng == null) {
@@ -428,13 +431,13 @@ fun MapScreen(
             if (segmento.isNotEmpty()) {
                 tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                 val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
-                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
+                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, codigoCombi = ruta.codigoCombi, color = ruta.color))
             }
         } else if (n >= 2) {
             val coordsList = mutableListOf<List<Map<String, Double>>>()
             val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
 
-            // 1. Elegir direcciÃ³n para la primera ruta
+            // 1. Elegir dirección para la primera ruta
             val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
             coordsList.add(coords0)
             nextCoordsRecomendadas[rutasRecomendadas[0].codigo.trim()] = coords0
@@ -487,7 +490,7 @@ fun MapScreen(
                     )
                     val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
                     val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
-                    nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                    nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, codigoCombi = r.codigoCombi, color = r.color))
                 }
             }
 
@@ -673,7 +676,7 @@ fun MapScreen(
                                 icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                         }
 
-                        // â”€â”€ Rutas visibles del drawer (IDA o VUELTA segÃºn toggle) â”€â”€â”€â”€â”€â”€
+                        // ── Rutas visibles del drawer (IDA o VUELTA según toggle) ──────
                         rutas.filter { rutasVisibles.contains(it.id) }.forEach { ruta ->
                             val usarVuelta = (direccionPorRuta[ruta.id] == true) &&
                                     ruta.coordenadasVuelta.isNotEmpty()
@@ -687,11 +690,11 @@ fun MapScreen(
                                 Polyline(points = puntos, color = parseColor(ruta.color), width = 7f)
                         }
 
-                        // â”€â”€ Capa 1: rutas resaltadas por IA (contexto, tenue) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // ── Capa 1: rutas resaltadas por IA (contexto, tenue) ─────────────
                         rutas.filter { ruta ->
                             rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) }
                         }.forEach { ruta ->
-                            // Usar el sentido correcto precalculado (o fallback a elegirDireccion si no estÃ¡)
+                            // Usar el sentido correcto precalculado (o fallback a elegirDireccion si no está)
                             val coordsUsadas = coordsRecomendadas[ruta.codigo.trim()]
                                 ?: (if (origenLatLng != null && destinoLatLng != null) {
                                     elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
@@ -708,7 +711,7 @@ fun MapScreen(
                                     color = parseColor(ruta.color).copy(alpha = 0.35f), width = 10f)
                         }
 
-                        // â”€â”€ Capa 2: guÃ­a GPS (tramo exacto, sentido correcto) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // ── Capa 2: guía GPS (tramo exacto, sentido correcto) ─────────────
                         if (tramosGuia.isNotEmpty() && guiaActiva) {
                             tramosGuia.forEach { tramo ->
                                 if (!tramo.esCaminata)
@@ -729,19 +732,19 @@ fun MapScreen(
                             }
                         }
 
-                        // â”€â”€ Capa 3: marcadores de ruta y transbordo (badges y combis) â”€â”€â”€â”€â”€
+                        // ── Capa 3: marcadores de ruta y transbordo (badges y combis) ─────
                         if (guiaActiva) {
                             val iconCombi = remember(context) { crearBitmapCombiIcon(context) }
                             
                             marcadoresRuta.forEach { marcador ->
-                                val iconBadge = remember(context, marcador.codigo, marcador.color) {
-                                    crearBitmapCodigoRuta(context, marcador.codigo, marcador.color)
+                                val iconBadge = remember(context, marcador.codigoCombi, marcador.color) {
+                                    crearBitmapCodigoRuta(context, marcador.codigoCombi, marcador.color)
                                 }
                                 Marker(
                                     state = MarkerState(position = marcador.posicion),
                                     anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
                                     icon = iconBadge,
-                                    title = "Ruta ${marcador.codigo}"
+                                    title = "Ruta ${marcador.codigoCombi}"
                                 )
                             }
                             
@@ -756,7 +759,7 @@ fun MapScreen(
                         }
                     }
 
-                    // â”€â”€ Banner modo selecciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // ── Banner modo selección ─────────────────────────────
                     if (modoSeleccion != null) {
                         Card(
                             modifier = Modifier
@@ -777,8 +780,8 @@ fun MapScreen(
                             ) {
                                 Text(
                                     text = if (modoSeleccion == "origen")
-                                        "ðŸ“ Toca el mapa para marcar el ORIGEN"
-                                    else "ðŸ Toca el mapa para marcar el DESTINO",
+                                        "📍 Toca el mapa para marcar el ORIGEN"
+                                    else "🏁 Toca el mapa para marcar el DESTINO",
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -801,7 +804,7 @@ fun MapScreen(
                         }
                     }
 
-                    // â”€â”€ Barra de bÃºsqueda + botones flotantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // ── Barra de búsqueda + botones flotantes ─────────────
                     if (modoSeleccion == null) {
                         Column(
                             modifier = Modifier
@@ -827,7 +830,7 @@ fun MapScreen(
                                 ) {
                                     Icon(Icons.Filled.Search, null, tint = NavGray, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(10.dp))
-                                    Text("Â¿A dÃ³nde vas?", fontSize = 15.sp, color = NavGray)
+                                    Text("¿A dónde vas?", fontSize = 15.sp, color = NavGray)
                                     Spacer(modifier = Modifier.weight(1f))
                                     Icon(Icons.Filled.Tune, null, tint = NavRed, modifier = Modifier.size(20.dp))
                                 }
@@ -858,7 +861,7 @@ fun MapScreen(
                                         contentColor = NavRed,
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Icon(Icons.Filled.MyLocation, "Mi ubicaciÃ³n", modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Filled.MyLocation, "Mi ubicación", modifier = Modifier.size(20.dp))
                                     }
 
                                     var showMapTypeMenu by remember { mutableStateOf(false) }
@@ -875,13 +878,13 @@ fun MapScreen(
                                             expanded = showMapTypeMenu,
                                             onDismissRequest = { showMapTypeMenu = false }
                                         ) {
-                                            DropdownMenuItem(text = { Text("ðŸ—ºï¸  EstÃ¡ndar") },
+                                            DropdownMenuItem(text = { Text("🗺️  Estándar") },
                                                 onClick = { mapType = MapType.NORMAL; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("ðŸ›°ï¸  SatÃ©lite") },
+                                            DropdownMenuItem(text = { Text("🛰️  Satélite") },
                                                 onClick = { mapType = MapType.SATELLITE; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("â›°ï¸  Relieve") },
+                                            DropdownMenuItem(text = { Text("⛰️  Relieve") },
                                                 onClick = { mapType = MapType.TERRAIN; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("ðŸ”€  HÃ­brido") },
+                                            DropdownMenuItem(text = { Text("🔀  Híbrido") },
                                                 onClick = { mapType = MapType.HYBRID; showMapTypeMenu = false })
                                         }
                                     }
@@ -894,7 +897,7 @@ fun MapScreen(
                                             shape = RoundedCornerShape(12.dp)
                                         ) {
                                             Icon(Icons.Filled.LocationOn,
-                                                contentDescription = if (guiaActiva) "Ocultar guÃ­a" else "Mostrar guÃ­a",
+                                                contentDescription = if (guiaActiva) "Ocultar guía" else "Mostrar guía",
                                                 modifier = Modifier.size(20.dp))
                                         }
                                     }
@@ -903,10 +906,11 @@ fun MapScreen(
                         }
                     }
 
-                    // â”€â”€ Panel de bÃºsqueda con animaciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // ── Panel de búsqueda con animación ──────────────────
                     val rutaColores = remember(rutas) { rutas.associate { it.codigo.trim() to it.color } }
                     val rutaEtiquetas = remember(rutas) { rutas.associate { it.codigo.trim() to it.etiqueta.trim() } }
-                    // Sentido elegido por elegirDireccion() para cada cÃ³digo recomendado
+                    val rutaCombis = remember(rutas) { rutas.associate { it.codigo.trim() to it.codigoCombi } }
+                    // Sentido elegido por elegirDireccion() para cada código recomendado
                     val rutaSentidos = remember(rutas, codigosPendientes, origenLatLng, destinoLatLng) {
                         val currentOrigen = origenLatLng
                         val currentDestino = destinoLatLng
@@ -926,7 +930,7 @@ fun MapScreen(
                             } else if (n >= 2) {
                                 val coordsList = mutableListOf<List<Map<String, Double>>>()
 
-                                // 1. Elegir direcciÃ³n para la primera ruta
+                                // 1. Elegir dirección para la primera ruta
                                 val coords0 = elegirDireccion(rutasRecomendadas[0], currentOrigen, currentDestino)
                                 coordsList.add(coords0)
                                 val esVuelta0 = rutasRecomendadas[0].coordenadasVuelta.isNotEmpty() && coords0 == rutasRecomendadas[0].coordenadasVuelta
@@ -998,13 +1002,13 @@ fun MapScreen(
                                         if (segmento.isNotEmpty()) {
                                             tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                                             val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
-                                            nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, color = ruta.color))
+                                            nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = ruta.codigo, codigoCombi = ruta.codigoCombi, color = ruta.color))
                                         }
                                     } else if (n >= 2) {
                                         val coordsList = mutableListOf<List<Map<String, Double>>>()
                                         val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
 
-                                        // 1. Elegir direcciÃ³n para la primera ruta
+                                        // 1. Elegir dirección para la primera ruta
                                         val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
                                         coordsList.add(coords0)
 
@@ -1049,7 +1053,7 @@ fun MapScreen(
                                                 )
                                                 val metrosDesplazamiento = if (i == 0) 10.0 else 150.0
                                                 val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = metrosDesplazamiento)
-                                                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, color = r.color))
+                                                nextMarcadoresRuta.add(MarkerRutaGuia(posicion = posBadge, codigo = r.codigo, codigoCombi = r.codigoCombi, color = r.color))
                                             }
                                         }
 
@@ -1073,14 +1077,15 @@ fun MapScreen(
                             },
                             rutaColores  = rutaColores,
                             rutaSentidos = rutaSentidos,
-                            rutaEtiquetas = rutaEtiquetas
+                            rutaEtiquetas = rutaEtiquetas,
+                            rutaCombis = rutaCombis
                         )
                     }
 
                     if (mostrarComentarios && rutaDetalle != null) {
                         ComentariosSheet(
                             rutaId     = rutaDetalle!!.id,
-                            rutaNombre = rutaDetalle!!.nombre,
+                            rutaNombre = "${rutaDetalle!!.codigoCombi} – ${rutaDetalle!!.empresa}",
                             rutaCodigo = rutaDetalle!!.codigo,
                             onDismiss  = { mostrarComentarios = false }
                         )
@@ -1157,7 +1162,7 @@ fun MapScreen(
     }
 }
 
-// â”€â”€ NavIcon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NavIcon ──────────────────────────────────────────────────────────────────
 @Composable
 private fun NavIcon(
     icon: @Composable (androidx.compose.ui.unit.Dp) -> Unit,
@@ -1171,7 +1176,7 @@ private fun NavIcon(
     ) { icon(22.dp) }
 }
 
-// â”€â”€ RutasSheetContent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RutasSheetContent ────────────────────────────────────────────────────────
 @Composable
 fun RutasSheetContent(
     rutas: List<RutaMapa>,
@@ -1179,27 +1184,16 @@ fun RutasSheetContent(
     onToggleRuta: (String) -> Unit,
     onDetalleRuta: (RutaMapa) -> Unit
 ) {
-    // 1. Extraer cuencas disponibles y agrupar rutas de forma dinÃ¡mica
+    // 1. Extraer cuencas disponibles y agrupar rutas de forma dinámica
     val cuencasMap = remember(rutas) {
-        val regex = Regex("""C-\d+""", RegexOption.IGNORE_CASE)
-        fun obtenerCuenca(r: RutaMapa): String {
-            val matchNombre = regex.find(r.nombre)?.value
-            if (matchNombre != null) return matchNombre.uppercase()
-            val matchEtiqueta = regex.find(r.etiqueta)?.value
-            if (matchEtiqueta != null) return matchEtiqueta.uppercase()
-            val matchCodigo = regex.find(r.codigo)?.value
-            if (matchCodigo != null) return matchCodigo.uppercase()
-            return "OTROS"
-        }
-
-        rutas.groupBy { obtenerCuenca(it) }
+        rutas.groupBy { it.cuenca.ifBlank { "OTROS" } }
     }
 
-    // 2. Ordenar las cuencas numÃ©ricamente: C-1, C-2, ..., C-10, y OTROS al final
+    // 2. Ordenar: C2, C3, ..., C11 por numero; despues ALB, CHI y OTROS por nombre
     val cuencasOrdenadas = remember(cuencasMap) {
         cuencasMap.keys.sortedWith(Comparator { a, b ->
-            val numA = a.substringAfter("-").toIntOrNull()
-            val numB = b.substringAfter("-").toIntOrNull()
+            val numA = a.removePrefix("C").toIntOrNull()
+            val numB = b.removePrefix("C").toIntOrNull()
             when {
                 numA != null && numB != null -> numA.compareTo(numB)
                 numA != null -> -1
@@ -1209,7 +1203,7 @@ fun RutasSheetContent(
         })
     }
 
-    // 3. Estado de la cuenca seleccionada (por defecto la primera cuenca o vacÃ­a si no hay)
+    // 3. Estado de la cuenca seleccionada (por defecto la primera cuenca o vacía si no hay)
     var cuencaSeleccionada by remember(cuencasOrdenadas) {
         mutableStateOf(cuencasOrdenadas.firstOrNull() ?: "")
     }
@@ -1237,7 +1231,7 @@ fun RutasSheetContent(
                     .fillMaxWidth()
                     .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.7f)
             ) {
-                // â”€â”€ Columna Izquierda: MenÃº de Cuencas (Ancho fijo, scrollable) â”€â”€
+                // ── Columna Izquierda: Menú de Cuencas (Ancho fijo, scrollable) ──
                 Column(
                     modifier = Modifier
                         .width(96.dp)
@@ -1269,7 +1263,7 @@ fun RutasSheetContent(
                             }
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = cuenca,
+                                    text = etiquetaCuenca(cuenca),
                                     fontSize = 15.sp,
                                     fontWeight = if (esSeleccionada) FontWeight.Bold else FontWeight.Medium,
                                     color = if (esSeleccionada) NavRed else NavSecondary
@@ -1295,7 +1289,7 @@ fun RutasSheetContent(
                         .background(Color(0xFFE0E0E0))
                 )
 
-                // â”€â”€ Columna Derecha: Listado de Rutas de la Cuenca Seleccionada â”€â”€
+                // ── Columna Derecha: Listado de Rutas de la Cuenca Seleccionada ──
                 val rutasDeCuenca = cuencasMap[cuencaSeleccionada] ?: emptyList()
                 if (rutasDeCuenca.isEmpty()) {
                     Box(
@@ -1331,7 +1325,7 @@ fun RutasSheetContent(
     }
 }
 
-// â”€â”€ RutaListItem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RutaListItem ─────────────────────────────────────────────────────────────
 @Composable
 fun RutaListItem(
     ruta: RutaMapa,
@@ -1350,25 +1344,25 @@ fun RutaListItem(
                 .background(bgColor.copy(alpha = if (isVisible) 1f else 0.7f)),
             contentAlignment = Alignment.Center
         ) {
-            Text(ruta.codigo, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
+            Text(ruta.codigoCombi, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White,
                 maxLines = 1, overflow = TextOverflow.Clip)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
             val titleText = if (hideCuenca) {
-                if (ruta.etiqueta.isNotEmpty()) "\"${ruta.etiqueta}\"" else ruta.codigo
+                if (ruta.etiqueta.isNotEmpty()) "\"${ruta.etiqueta}\"" else ruta.codigoCombi
             } else {
                 if (ruta.etiqueta.isNotEmpty()) {
-                    "\"${ruta.etiqueta}\" - ${ruta.nombre.ifEmpty { "Sin Nombre" }}"
+                    "\"${ruta.etiqueta}\" - ${etiquetaCuenca(ruta.cuenca)}"
                 } else {
-                    ruta.nombre.ifEmpty { ruta.codigo }
+                    ruta.codigoCombi
                 }
             }
             Text(titleText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 color = if (isVisible) NavRed else NavSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val subtitulo = buildString {
                 if (ruta.empresa.isNotEmpty()) append(ruta.empresa)
-                if (ruta.frecuencia.isNotEmpty()) { if (isNotEmpty()) append(" â€¢ "); append(ruta.frecuencia) }
+                if (ruta.frecuencia.isNotEmpty()) { if (isNotEmpty()) append(" • "); append(ruta.frecuencia) }
             }
             if (subtitulo.isNotEmpty())
                 Text(subtitulo, fontSize = 12.sp, color = NavGray, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -1379,7 +1373,7 @@ fun RutaListItem(
     }
 }
 
-// â”€â”€ RutaDetalleSheet â€” muestra IDA y VUELTA en el tab RECORRIDO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RutaDetalleSheet — muestra IDA y VUELTA en el tab RECORRIDO ──────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RutaDetalleSheet(
@@ -1420,7 +1414,7 @@ fun RutaDetalleSheet(
         }
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            // â”€â”€ Cabecera â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Cabecera ─────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1435,14 +1429,14 @@ fun RutaDetalleSheet(
                 Box(modifier = Modifier.width(52.dp).height(42.dp)
                     .clip(RoundedCornerShape(10.dp)).background(badgeColor),
                     contentAlignment = Alignment.Center) {
-                    Text(ruta.codigo, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    Text(ruta.codigoCombi, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         color = Color.White, maxLines = 1, overflow = TextOverflow.Clip)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     val detailTitle = if (ruta.etiqueta.isNotEmpty()) {
-                        "\"${ruta.etiqueta}\" - ${ruta.nombre}".trim()
+                        "\"${ruta.etiqueta}\""
                     } else {
-                        ruta.nombre.trim().ifEmpty { ruta.codigo }
+                        ruta.codigoCombi.trim().ifEmpty { ruta.codigo }
                     }
                     Text(detailTitle, fontSize = 17.sp,
                         fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
@@ -1453,7 +1447,7 @@ fun RutaDetalleSheet(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tabs ─────────────────────────────────────────────────────
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                 listOf("RECORRIDO", "OPINIONES").forEachIndexed { index, label ->
                     val isSelected = selectedTab == index
@@ -1475,7 +1469,7 @@ fun RutaDetalleSheet(
 
             when (selectedTab) {
 
-                // â”€â”€ Tab RECORRIDO: toggle IDA/VUELTA + texto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── Tab RECORRIDO: toggle IDA/VUELTA + texto ──────────────
                 0 -> {
                     Column(
                         modifier = Modifier
@@ -1483,7 +1477,7 @@ fun RutaDetalleSheet(
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Toggle IDA / VUELTA â€” solo si la ruta tiene vuelta
+                        // Toggle IDA / VUELTA — solo si la ruta tiene vuelta
                         if (ruta.coordenadasVuelta.isNotEmpty() || ruta.avenidaVuelta.isNotEmpty()) {
                             Row(
                                 modifier = Modifier
@@ -1492,7 +1486,7 @@ fun RutaDetalleSheet(
                                     .background(Color(0xFFF5F5F5)),
                                 horizontalArrangement = Arrangement.Center
                             ) {
-                                listOf(false to "âž¡ IDA", true to "â¬… VUELTA")
+                                listOf(false to "➡ IDA", true to "⬅ VUELTA")
                                     .forEach { (esVuelta, label) ->
                                         val seleccionado = mostrarVuelta == esVuelta
                                         Box(
@@ -1520,11 +1514,11 @@ fun RutaDetalleSheet(
                             }
                         }
 
-                        // Texto del recorrido segÃºn selecciÃ³n
+                        // Texto del recorrido según selección
                         val textoRecorrido = if (mostrarVuelta && ruta.avenidaVuelta.isNotEmpty())
                             ruta.avenidaVuelta else ruta.avenidas
                         val colorLabel = if (mostrarVuelta) Color(0xFF1565C0) else NavRed
-                        val labelDir   = if (mostrarVuelta) "â¬… VUELTA" else "âž¡ IDA"
+                        val labelDir   = if (mostrarVuelta) "⬅ VUELTA" else "➡ IDA"
 
                         if (textoRecorrido.isNotEmpty()) {
                             Card(
@@ -1559,7 +1553,7 @@ fun RutaDetalleSheet(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "Sin informaciÃ³n de recorrido",
+                                    "Sin información de recorrido",
                                     fontSize = 13.sp, color = NavGray
                                 )
                             }
@@ -1567,14 +1561,14 @@ fun RutaDetalleSheet(
                     }
                 }
 
-                // â”€â”€ Tab OPINIONES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── Tab OPINIONES ─────────────────────────────────────────
                 1 -> {
                     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (comentarios.isEmpty()) {
                             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center) {
-                                Text("No hay opiniones aÃºn. Â¡SÃ© el primero!", fontSize = 13.sp, color = NavGray)
+                                Text("No hay opiniones aún. ¡Sé el primero!", fontSize = 13.sp, color = NavGray)
                             }
                         } else {
                             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
@@ -1592,10 +1586,10 @@ fun RutaDetalleSheet(
                                         Column(modifier = Modifier.padding(12.dp),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             if (comentario.destacado)
-                                                Text("ðŸ“Œ Destacado", fontSize = 10.sp,
+                                                Text("📌 Destacado", fontSize = 10.sp,
                                                     color = NavRed, fontWeight = FontWeight.Bold)
                                             Text(comentario.texto, fontSize = 13.sp, color = Color(0xFF212121))
-                                            Text("${comentario.nombreUsuario} Â· $fecha",
+                                            Text("${comentario.nombreUsuario} · $fecha",
                                                 fontSize = 11.sp, color = NavGray)
                                         }
                                     }
@@ -1604,7 +1598,7 @@ fun RutaDetalleSheet(
                         }
                         HorizontalDivider(color = Color(0xFFEEEEEE))
                         if (comentarioViewModel.sesionActiva) {
-                            Text("Deja tu opiniÃ³n:", fontSize = 13.sp,
+                            Text("Deja tu opinión:", fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold, color = Color(0xFF212121))
                             OutlinedTextField(
                                 value = textoComentario,
@@ -1621,13 +1615,13 @@ fun RutaDetalleSheet(
                                     Text((comentarioState as ComentarioState.Error).mensaje,
                                         color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                                 is ComentarioState.Success ->
-                                    Text("âœ… Comentario enviado.", color = NavRed, fontSize = 12.sp)
+                                    Text("✅ Comentario enviado.", color = NavRed, fontSize = 12.sp)
                                 else -> {}
                             }
                             Button(
                                 onClick = {
                                     comentarioViewModel.publicarComentario(
-                                        rutaId = ruta.id, rutaNombre = ruta.nombre,
+                                        rutaId = ruta.id, rutaNombre = "${ruta.codigoCombi} – ${ruta.empresa}",
                                         rutaCodigo = ruta.codigo, texto = textoComentario)
                                 },
                                 modifier = Modifier.fillMaxWidth(),
@@ -1639,11 +1633,11 @@ fun RutaDetalleSheet(
                                 } else {
                                     Icon(Icons.Filled.Forum, null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Publicar opiniÃ³n", fontSize = 13.sp)
+                                    Text("Publicar opinión", fontSize = 13.sp)
                                 }
                             }
                         } else {
-                            Text("Inicia sesiÃ³n para dejar un comentario", fontSize = 13.sp, color = NavGray)
+                            Text("Inicia sesión para dejar un comentario", fontSize = 13.sp, color = NavGray)
                         }
                     }
                 }
@@ -1668,7 +1662,7 @@ fun obtenerPuntoMasAdelante(
     if (segmento.isEmpty()) return com.google.android.gms.maps.model.LatLng(0.0, 0.0)
     if (startIndex >= segmento.lastIndex) return segmento.last()
     
-    // Evitar que el marcador pase del penÃºltimo punto (fin del recorrido en combi)
+    // Evitar que el marcador pase del penúltimo punto (fin del recorrido en combi)
     val maxIndex = (segmento.size - 2).coerceAtLeast(startIndex)
     
     var currentPt = segmento[startIndex]
@@ -1832,3 +1826,7 @@ fun crearBitmapCombiIcon(context: android.content.Context): com.google.android.g
     
     return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
 }
+
+// C8 -> "C-8"; ALB, CHI y OTROS se muestran tal cual
+private fun etiquetaCuenca(cuenca: String): String =
+    Regex("^C(\\d+)$").replace(cuenca, "C-$1")
