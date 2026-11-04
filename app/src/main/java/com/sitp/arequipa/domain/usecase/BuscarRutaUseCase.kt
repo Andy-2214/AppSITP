@@ -31,8 +31,6 @@ class BuscarRutaUseCase {
         val todasLasRutas = rutas.mapNotNull { r ->
             val ptsIda = r.coordsIda
             val ptsVuelta = r.coordsVuelta
-            val coordsIda = ptsIda.map { mapOf("lat" to it.first, "lng" to it.second) }
-            val coordsVuelta = ptsVuelta.map { mapOf("lat" to it.first, "lng" to it.second) }
             val todosPts = ptsIda + ptsVuelta
             if (todosPts.isEmpty()) return@mapNotNull null
 
@@ -57,11 +55,10 @@ class BuscarRutaUseCase {
                 "empresa" to r.empresa,
                 "avenidas" to r.avenidas,
                 "avenidaVuelta" to r.avenidaVuelta,
-                "coordsIda" to coordsIda,
-                "coordsVuelta" to coordsVuelta,
                 "ptsIda" to ptsIda,
                 "ptsVuelta" to ptsVuelta,
                 "todosPts" to todosPts,
+                "grilla" to GrillaRuta(todosPts),
                 "minLat" to minLat,
                 "maxLat" to maxLat,
                 "minLng" to minLng,
@@ -69,7 +66,7 @@ class BuscarRutaUseCase {
                 "minDistOrigen" to minDistOrigen,
                 "minDistDestino" to minDistDestino
             )
-        }
+        }.mapIndexed { i, ruta -> ruta + ("idx" to i) }
 
         val radio = 1000.0
         val radioFallback = 2000.0
@@ -88,13 +85,10 @@ class BuscarRutaUseCase {
         val codigosOrigen = rutasOrigenOrdenadas.map { it["codigo"].toString() }.toSet()
         val codigosDestino = rutasDestinoOrdenadas.map { it["codigo"].toString() }.toSet()
 
-        val intersectanMemo = mutableMapOf<Pair<String, String>, Boolean>()
+        val nRutas = todasLasRutas.size
+        val cruceMemo = ByteArray(nRutas * nRutas) // 0 = sin calcular, 1 = se cruzan, 2 = no se cruzan
 
         fun intersectanRutas(r1: Map<String, Any>, r2: Map<String, Any>): Boolean {
-            @Suppress("UNCHECKED_CAST")
-            val pts1 = r1["todosPts"] as List<Pair<Double, Double>>
-            @Suppress("UNCHECKED_CAST")
-            val pts2 = r2["todosPts"] as List<Pair<Double, Double>>
             val minLat1 = r1["minLat"] as Double; val maxLat1 = r1["maxLat"] as Double
             val minLng1 = r1["minLng"] as Double; val maxLng1 = r1["maxLng"] as Double
             val minLat2 = r2["minLat"] as Double; val maxLat2 = r2["maxLat"] as Double
@@ -102,51 +96,55 @@ class BuscarRutaUseCase {
             val margin = 0.0045
             if (maxLat1 < minLat2 - margin || minLat1 > maxLat2 + margin ||
                 maxLng1 < minLng2 - margin || minLng1 > maxLng2 + margin) return false
-            val limitSq = 0.0027 * 0.0027
-            for (p1 in pts1) {
-                if (p1.first < minLat2 - margin || p1.first > maxLat2 + margin ||
-                    p1.second < minLng2 - margin || p1.second > maxLng2 + margin) continue
-                for (p2 in pts2) {
-                    val dlat = p1.first - p2.first
-                    val dlng = p1.second - p2.second
-                    if (dlat * dlat + dlng * dlng <= limitSq) return true
-                }
-            }
-            return false
+            return GrillaRuta.hayCruce(r1["grilla"] as GrillaRuta, r2["grilla"] as GrillaRuta)
         }
 
         fun cachedIntersectan(r1: Map<String, Any>, r2: Map<String, Any>): Boolean {
-            val c1 = r1["codigo"].toString()
-            val c2 = r2["codigo"].toString()
-            val key = if (c1 < c2) Pair(c1, c2) else Pair(c2, c1)
-            return intersectanMemo.getOrPut(key) { intersectanRutas(r1, r2) }
+            val i = r1["idx"] as Int
+            val j = r2["idx"] as Int
+            val guardado = cruceMemo[i * nRutas + j].toInt()
+            if (guardado != 0) return guardado == 1
+            val seCruzan = intersectanRutas(r1, r2)
+            val marca: Byte = if (seCruzan) 1 else 2
+            cruceMemo[i * nRutas + j] = marca
+            cruceMemo[j * nRutas + i] = marca
+            return seCruzan
         }
 
+        val puntoMemo = arrayOfNulls<Pair<Double, Double>>(nRutas * nRutas)
+        val puntoListo = BooleanArray(nRutas * nRutas)
+
         fun obtenerPuntoInterseccion(r1: Map<String, Any>, r2: Map<String, Any>): Pair<Double, Double>? {
-            @Suppress("UNCHECKED_CAST")
-            val pts1 = r1["todosPts"] as List<Pair<Double, Double>>
-            @Suppress("UNCHECKED_CAST")
-            val pts2 = r2["todosPts"] as List<Pair<Double, Double>>
-            val minLat2 = r2["minLat"] as Double; val maxLat2 = r2["maxLat"] as Double
-            val minLng2 = r2["minLng"] as Double; val maxLng2 = r2["maxLng"] as Double
-            val margin = 0.0045
-            var bestPt: Pair<Double, Double>? = null
-            var minDistSq = Double.MAX_VALUE
-            val limitSq = 0.0027 * 0.0027
-            for (p1 in pts1) {
-                if (p1.first < minLat2 - margin || p1.first > maxLat2 + margin ||
-                    p1.second < minLng2 - margin || p1.second > maxLng2 + margin) continue
-                for (p2 in pts2) {
-                    val dlat = p1.first - p2.first
-                    val dlng = p1.second - p2.second
-                    val distSq = dlat * dlat + dlng * dlng
-                    if (distSq <= limitSq && distSq < minDistSq) {
-                        minDistSq = distSq
-                        bestPt = p1
-                    }
-                }
+            val k = (r1["idx"] as Int) * nRutas + (r2["idx"] as Int)
+            if (puntoListo[k]) return puntoMemo[k]
+            val punto = GrillaRuta.puntoDeCruce(r1["grilla"] as GrillaRuta, r2["grilla"] as GrillaRuta)
+            puntoMemo[k] = punto
+            puntoListo[k] = true
+            return punto
+        }
+
+        // haversine(origen, cruce) y haversine(cruce, destino) dependen solo del par de rutas: se guardan
+        val havOrigen = DoubleArray(nRutas * nRutas) { Double.NaN }
+        val havDestino = DoubleArray(nRutas * nRutas) { Double.NaN }
+
+        fun havDesdeOrigen(a: Map<String, Any>, b: Map<String, Any>, cruce: Pair<Double, Double>): Double {
+            val k = (a["idx"] as Int) * nRutas + (b["idx"] as Int)
+            var v = havOrigen[k]
+            if (v.isNaN()) {
+                v = haversine(origenLat, origenLng, cruce.first, cruce.second)
+                havOrigen[k] = v
             }
-            return bestPt
+            return v
+        }
+
+        fun havHastaDestino(a: Map<String, Any>, b: Map<String, Any>, cruce: Pair<Double, Double>): Double {
+            val k = (a["idx"] as Int) * nRutas + (b["idx"] as Int)
+            var v = havDestino[k]
+            if (v.isNaN()) {
+                v = haversine(cruce.first, cruce.second, destinoLat, destinoLng)
+                havDestino[k] = v
+            }
+            return v
         }
 
         fun calcularDistanciaTotal(path: List<Map<String, Any>>): Double {
@@ -157,50 +155,19 @@ class BuscarRutaUseCase {
                 1 -> haversine(origenLat, origenLng, destinoLat, destinoLng)
                 2 -> {
                     val i = obtenerPuntoInterseccion(path[0], path[1]) ?: return Double.MAX_VALUE
-                    haversine(origenLat, origenLng, i.first, i.second) +
-                            haversine(i.first, i.second, destinoLat, destinoLng)
+                    havDesdeOrigen(path[0], path[1], i) + havHastaDestino(path[0], path[1], i)
                 }
                 3 -> {
                     val i1 = obtenerPuntoInterseccion(path[0], path[1]) ?: return Double.MAX_VALUE
                     val i2 = obtenerPuntoInterseccion(path[1], path[2]) ?: return Double.MAX_VALUE
-                    haversine(origenLat, origenLng, i1.first, i1.second) +
+                    havDesdeOrigen(path[0], path[1], i1) +
                             haversine(i1.first, i1.second, i2.first, i2.second) +
-                            haversine(i2.first, i2.second, destinoLat, destinoLng)
+                            havHastaDestino(path[1], path[2], i2)
                 }
                 else -> Double.MAX_VALUE
             }
             if (distVehiculo == Double.MAX_VALUE) return Double.MAX_VALUE
             return distVehiculo + (dOrigen + dDestino) * 3.0
-        }
-
-        // Buscar paths de 1 ruta (directas)
-        val paths1 = rutasOrigenOrdenadas
-            .filter { it["codigo"].toString() in codigosDestino }
-            .map { listOf(it) }
-
-        // Buscar paths de 2 rutas (1 transbordo)
-        val paths2 = mutableListOf<List<Map<String, Any>>>()
-        for (r1 in rutasOrigenOrdenadas) {
-            for (r2 in rutasDestinoOrdenadas) {
-                if (r1["codigo"] != r2["codigo"] && cachedIntersectan(r1, r2)) {
-                    paths2.add(listOf(r1, r2))
-                }
-            }
-        }
-
-        // Buscar paths de 3 rutas (2 transbordos)
-        val paths3 = mutableListOf<List<Map<String, Any>>>()
-        for (r1 in rutasOrigenOrdenadas) {
-            for (r2 in rutasDestinoOrdenadas) {
-                if (r1["codigo"] == r2["codigo"]) continue
-                for (rm in todasLasRutas) {
-                    val codM = rm["codigo"].toString()
-                    if (codM == r1["codigo"].toString() || codM == r2["codigo"].toString()) continue
-                    if (cachedIntersectan(r1, rm) && cachedIntersectan(rm, r2)) {
-                        paths3.add(listOf(r1, rm, r2))
-                    }
-                }
-            }
         }
 
         data class RutaCandidata(
@@ -210,32 +177,65 @@ class BuscarRutaUseCase {
             val costoTotal: Double
         )
 
-        val candidatas = (paths1 + paths2 + paths3).mapNotNull { path ->
+        val exactThreshold = 15.0
+        val comparador: Comparator<RutaCandidata> = if (preferencia == "costo") {
+            compareByDescending<RutaCandidata> {
+                (it.path.first()["minDistOrigen"] as Double) <= exactThreshold &&
+                        (it.path.last()["minDistDestino"] as Double) <= exactThreshold
+            }.thenBy { it.path.size }.thenBy { it.tiempoEstimado }
+        } else {
+            compareByDescending<RutaCandidata> {
+                (it.path.first()["minDistOrigen"] as Double) <= exactThreshold &&
+                        (it.path.last()["minDistDestino"] as Double) <= exactThreshold
+            }.thenBy { it.tiempoEstimado }
+        }
+
+        // Cada camino se evalúa al vuelo y solo se conserva el mejor (en empate, el primero, igual que
+        // sortedWith().firstOrNull()). Con rutas densas hay decenas de miles de caminos de 3 rutas:
+        // guardarlos todos agotaba el tiempo y la memoria del teléfono.
+        var mejorCandidata: RutaCandidata? = null
+        fun considerar(path: List<Map<String, Any>>) {
             val dist = calcularDistanciaTotal(path)
-            if (dist == Double.MAX_VALUE) null
-            else {
-                val tiempo = ((dist / 1000.0) * 3.5 + 6.0 + (8.0 * (path.size - 1))).toInt().coerceIn(10, 90)
-                val costo = 1.30 * path.size
-                RutaCandidata(path, dist, tiempo, costo)
+            if (dist == Double.MAX_VALUE) return
+            val tiempo = ((dist / 1000.0) * 3.5 + 6.0 + (8.0 * (path.size - 1))).toInt().coerceIn(10, 90)
+            val candidata = RutaCandidata(path, dist, tiempo, 1.30 * path.size)
+            val actual = mejorCandidata
+            if (actual == null || comparador.compare(candidata, actual) < 0) mejorCandidata = candidata
+        }
+
+        // Caminos de 1 ruta (directas)
+        for (r in rutasOrigenOrdenadas) {
+            if (r["codigo"].toString() in codigosDestino) considerar(listOf(r))
+        }
+
+        // Caminos de 2 rutas (1 transbordo)
+        for (r1 in rutasOrigenOrdenadas) {
+            for (r2 in rutasDestinoOrdenadas) {
+                if (r1["codigo"] != r2["codigo"] && cachedIntersectan(r1, r2)) {
+                    considerar(listOf(r1, r2))
+                }
             }
         }
 
-        val exactThreshold = 15.0
-        val elegida = if (preferencia == "costo") {
-            candidatas.sortedWith(
-                compareByDescending<RutaCandidata> {
-                    (it.path.first()["minDistOrigen"] as Double) <= exactThreshold &&
-                            (it.path.last()["minDistDestino"] as Double) <= exactThreshold
-                }.thenBy { it.path.size }.thenBy { it.tiempoEstimado }
-            ).firstOrNull()
-        } else {
-            candidatas.sortedWith(
-                compareByDescending<RutaCandidata> {
-                    (it.path.first()["minDistOrigen"] as Double) <= exactThreshold &&
-                            (it.path.last()["minDistDestino"] as Double) <= exactThreshold
-                }.thenBy { it.tiempoEstimado }
-            ).firstOrNull()
+        // Caminos de 3 rutas (2 transbordos). Para cada r1 se calcula una sola vez qué rutas la cruzan,
+        // conservando el orden original de la lista para que los empates se resuelvan igual que antes.
+        for (r1 in rutasOrigenOrdenadas) {
+            val i1 = r1["idx"] as Int
+            val vecinasDeR1 = todasLasRutas.filter { (it["idx"] as Int) != i1 && cachedIntersectan(r1, it) }
+            if (vecinasDeR1.isEmpty()) continue
+            for (r2 in rutasDestinoOrdenadas) {
+                val i2 = r2["idx"] as Int
+                if (i1 == i2) continue
+                for (rm in vecinasDeR1) {
+                    if ((rm["idx"] as Int) == i2) continue
+                    if (cachedIntersectan(rm, r2)) {
+                        considerar(listOf(r1, rm, r2))
+                    }
+                }
+            }
         }
+
+        val elegida = mejorCandidata
 
         if (elegida != null && consultaExtra.isBlank()) {
             val codigos = elegida.path.map { it["codigo"].toString() }
@@ -336,4 +336,157 @@ sealed class ResultadoBusqueda {
         val rutasDestino: List<String>,
         val esDirecta: Boolean
     ) : ResultadoBusqueda()
+}
+
+/**
+ * Índice espacial de una ruta: agrupa sus puntos en celdas cuadradas un poco mayores que el radio de
+ * cruce (≈300 m). Dos puntos a menos de ese radio siempre caen en la misma celda o en celdas vecinas,
+ * así que para buscar cruces solo se comparan los puntos de 9 celdas en vez de todos contra todos.
+ * Las celdas se guardan en una tabla hash con claves primitivas para no crear objetos en cada consulta.
+ */
+private class GrillaRuta(puntos: List<Pair<Double, Double>>) {
+    val lat = DoubleArray(puntos.size) { puntos[it].first }
+    val lng = DoubleArray(puntos.size) { puntos[it].second }
+    val nCeldas: Int
+    val claveDeCelda: LongArray
+    val desde: IntArray   // rango [desde, hasta) dentro de `orden` con los puntos de cada celda
+    val hasta: IntArray
+    val orden: IntArray   // índices de los puntos agrupados por celda (dentro de cada celda, por latitud creciente)
+    val latO: DoubleArray // latitud de cada posición de `orden`
+    val lngO: DoubleArray // longitud de cada posición de `orden`
+    private val tabla: IntArray
+    private val mascara: Int
+
+    init {
+        val porCelda = LinkedHashMap<Long, MutableList<Int>>()
+        for (i in lat.indices) {
+            porCelda.getOrPut(clave(celda(lat[i]), celda(lng[i]))) { mutableListOf() }.add(i)
+        }
+        nCeldas = porCelda.size
+        claveDeCelda = LongArray(nCeldas)
+        desde = IntArray(nCeldas)
+        hasta = IntArray(nCeldas)
+        orden = IntArray(lat.size)
+        latO = DoubleArray(lat.size)
+        lngO = DoubleArray(lat.size)
+        var capacidad = 16
+        while (capacidad < nCeldas * 2) capacidad = capacidad shl 1
+        mascara = capacidad - 1
+        tabla = IntArray(capacidad) { -1 }
+        var pos = 0
+        var c = 0
+        for ((k, lista) in porCelda) {
+            claveDeCelda[c] = k
+            desde[c] = pos
+            lista.sortBy { lat[it] }
+            for (i in lista) {
+                orden[pos] = i
+                latO[pos] = lat[i]
+                lngO[pos] = lng[i]
+                pos++
+            }
+            hasta[c] = pos
+            var h = mezclar(k) and mascara
+            while (tabla[h] != -1) h = (h + 1) and mascara
+            tabla[h] = c
+            c++
+        }
+    }
+
+    /** Índice de la celda con esa clave, o -1 si la ruta no tiene puntos ahí. */
+    fun buscarCelda(k: Long): Int {
+        var h = mezclar(k) and mascara
+        while (true) {
+            val c = tabla[h]
+            if (c == -1) return -1
+            if (claveDeCelda[c] == k) return c
+            h = (h + 1) and mascara
+        }
+    }
+
+    companion object {
+        const val RADIO_GRADOS = 0.0027
+        const val LIMITE_SQ = RADIO_GRADOS * RADIO_GRADOS
+        private const val TAM_CELDA = RADIO_GRADOS * 1.01
+
+        private fun celda(v: Double): Int = Math.floor(v / TAM_CELDA).toInt()
+        private fun clave(ix: Int, iy: Int): Long = (ix.toLong() shl 32) or (iy.toLong() and 0xFFFFFFFFL)
+        private fun mezclar(k: Long): Int = ((k * -7046029254386353131L) ushr 32).toInt()
+
+        /** ¿Hay algún par de puntos, uno de cada ruta, a distancia ≤ radio? */
+        fun hayCruce(a: GrillaRuta, b: GrillaRuta): Boolean {
+            for (ca in 0 until a.nCeldas) {
+                val k = a.claveDeCelda[ca]
+                val ix = (k shr 32).toInt()
+                val iy = k.toInt()
+                for (dx in -1..1) {
+                    for (dy in -1..1) {
+                        val cb = b.buscarCelda(clave(ix + dx, iy + dy))
+                        if (cb < 0) continue
+                        for (pa in a.desde[ca] until a.hasta[ca]) {
+                            val la = a.latO[pa]
+                            val lo = a.lngO[pa]
+                            for (pb in b.desde[cb] until b.hasta[cb]) {
+                                val dlat = la - b.latO[pb]
+                                val dlng = lo - b.lngO[pb]
+                                if (dlat * dlat + dlng * dlng <= LIMITE_SQ) return true
+                            }
+                        }
+                    }
+                }
+            }
+            return false
+        }
+
+        /**
+         * Punto de [a] más cercano a [b] (a distancia ≤ radio). Si varios empatan, el primero de [a].
+         * Devuelve null si las rutas no se cruzan.
+         */
+        fun puntoDeCruce(a: GrillaRuta, b: GrillaRuta): Pair<Double, Double>? {
+            var mejorD = Double.MAX_VALUE
+            var mejorI = -1
+            for (ca in 0 until a.nCeldas) {
+                val k = a.claveDeCelda[ca]
+                val ix = (k shr 32).toInt()
+                val iy = k.toInt()
+                for (dx in -1..1) {
+                    for (dy in -1..1) {
+                        val cb = b.buscarCelda(clave(ix + dx, iy + dy))
+                        if (cb < 0) continue
+                        val b0 = b.desde[cb]
+                        val b1 = b.hasta[cb]
+                        for (pa in a.desde[ca] until a.hasta[ca]) {
+                            val la = a.latO[pa]
+                            val lo = a.lngO[pa]
+                            val i = a.orden[pa]
+                            // Solo pueden servir los puntos con (dlat)^2 <= min(mejorD, LIMITE_SQ).
+                            val cota = if (mejorD < LIMITE_SQ) mejorD else LIMITE_SQ
+                            val corte = la - Math.sqrt(cota) - 1e-9
+                            var lo2 = b0
+                            var hi2 = b1
+                            while (lo2 < hi2) {
+                                val m = (lo2 + hi2) ushr 1
+                                if (b.latO[m] < corte) lo2 = m + 1 else hi2 = m
+                            }
+                            var pb = lo2
+                            while (pb < b1) {
+                                val dlat = la - b.latO[pb]
+                                val dl2 = dlat * dlat
+                                val c2 = if (mejorD < LIMITE_SQ) mejorD else LIMITE_SQ
+                                if (dlat < 0.0 && dl2 > c2) break
+                                val dlng = lo - b.lngO[pb]
+                                val d = dl2 + dlng * dlng
+                                if (d <= LIMITE_SQ && (d < mejorD || (d == mejorD && i < mejorI))) {
+                                    mejorD = d
+                                    mejorI = i
+                                }
+                                pb++
+                            }
+                        }
+                    }
+                }
+            }
+            return if (mejorI < 0) null else Pair(a.lat[mejorI], a.lng[mejorI])
+        }
+    }
 }
