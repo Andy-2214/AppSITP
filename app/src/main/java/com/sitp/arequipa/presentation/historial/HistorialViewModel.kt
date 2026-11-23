@@ -3,6 +3,7 @@ package com.sitp.arequipa.presentation.historial
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sitp.arequipa.domain.model.BusquedaHistorial
+import com.sitp.arequipa.domain.model.Coordenada
 import com.sitp.arequipa.domain.model.RutaFavorita
 import com.sitp.arequipa.domain.usecase.CargarFavoritosUseCase
 import com.sitp.arequipa.domain.usecase.CargarHistorialUseCase
@@ -10,6 +11,7 @@ import com.sitp.arequipa.domain.usecase.EliminarBusquedaUseCase
 import com.sitp.arequipa.domain.usecase.EliminarFavoritoUseCase
 import com.sitp.arequipa.domain.usecase.GuardarBusquedaUseCase
 import com.sitp.arequipa.domain.usecase.GuardarFavoritoUseCase
+import com.sitp.arequipa.domain.usecase.ObtenerNombreUbicacionUseCase
 import com.sitp.arequipa.domain.usecase.ObtenerSesionUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,8 @@ class HistorialViewModel(
     private val eliminarBusquedaUseCase: EliminarBusquedaUseCase,
     private val cargarFavoritosUseCase: CargarFavoritosUseCase,
     private val guardarFavoritoUseCase: GuardarFavoritoUseCase,
-    private val eliminarFavoritoUseCase: EliminarFavoritoUseCase
+    private val eliminarFavoritoUseCase: EliminarFavoritoUseCase,
+    private val obtenerNombreUbicacion: ObtenerNombreUbicacionUseCase
 ) : ViewModel() {
 
     private val uid: String? get() = obtenerSesionUseCase().uid
@@ -38,6 +41,22 @@ class HistorialViewModel(
 
     private val _favoritoAutoGuardado = MutableStateFlow(false)
     val favoritoAutoGuardado: StateFlow<Boolean> = _favoritoAutoGuardado
+
+    /** Coordenada guardada ("-16.3971, -71.5371") → nombre de la calle. Solo para mostrar. */
+    private val _nombres = MutableStateFlow<Map<String, String>>(emptyMap())
+    val nombres: StateFlow<Map<String, String>> = _nombres
+
+    /** Nombra los puntos que aún no tienen nombre (catálogo local: sin internet, ~1 ms por punto). */
+    private fun nombrarPuntos(textos: Collection<String>) {
+        val pendientes = textos.filter { it !in _nombres.value }.distinct()
+        if (pendientes.isEmpty()) return
+        viewModelScope.launch {
+            val nuevos = pendientes.mapNotNull { texto ->
+                Coordenada.desdeTexto(texto)?.let { texto to obtenerNombreUbicacion(it.lat, it.lng) }
+            }
+            _nombres.value = _nombres.value + nuevos
+        }
+    }
 
     // HU-22: Guardar búsqueda en historial y verificar favorito automático (HU-20)
     fun guardarBusqueda(
@@ -64,6 +83,7 @@ class HistorialViewModel(
             _loading.value = true
             try {
                 _historial.value = cargarHistorialUseCase(uidActual)
+                nombrarPuntos(_historial.value.flatMap { listOf(it.origen, it.destino) })
             } catch (e: Exception) {
                 println("DEBUG historial error: ${e.message}")
             } finally {
@@ -92,6 +112,7 @@ class HistorialViewModel(
             _loading.value = true
             try {
                 _favoritos.value = cargarFavoritosUseCase(uidActual)
+                nombrarPuntos(_favoritos.value.flatMap { listOf(it.origen, it.destino) })
             } catch (e: Exception) {
                 println("DEBUG favoritos error: ${e.message}")
             } finally {

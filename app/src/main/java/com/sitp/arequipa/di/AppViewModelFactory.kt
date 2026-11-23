@@ -47,7 +47,8 @@ class AppViewModelFactory(
                     eliminarBusquedaUseCase = container.eliminarBusquedaUseCase,
                     cargarFavoritosUseCase = container.cargarFavoritosUseCase,
                     guardarFavoritoUseCase = container.guardarFavoritoUseCase,
-                    eliminarFavoritoUseCase = container.eliminarFavoritoUseCase
+                    eliminarFavoritoUseCase = container.eliminarFavoritoUseCase,
+                    obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase
                 ) as T
 
             modelClass.isAssignableFrom(ComentarioViewModel::class.java) ->
