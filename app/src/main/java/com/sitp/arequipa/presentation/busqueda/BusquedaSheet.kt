@@ -115,14 +115,13 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
         val abordarDetalle = mA?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
         val bajarBase      = (if (mB != null) bajar.substring(0, mB.range.first) else bajar).trim().trimEnd(',', '.')
         val bajarDetalle   = mB?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
-        val bajarTexto = when {
-            bajarBase.isEmpty() -> ""
-            bajarBase.startsWith("Bájese", ignoreCase = true) ||
-                    bajarBase.startsWith("Bajese",  ignoreCase = true) ||
-                    bajarBase.startsWith("Baje",    ignoreCase = true) ->
-                bajarBase.replaceFirst("baje ", "Bájese en ", ignoreCase = true)
-                    .replaceFirst("bajese ", "Bájese en ", ignoreCase = true)
-            else -> "Bájese en $bajarBase"
+        // El texto puede traer ya el verbo y/o la preposición ("en el destino", "bajese en Av. X"):
+        // se quitan y se vuelve a poner "Bájese en" una sola vez (evita "Bájese en en el destino").
+        val bajarTexto = if (bajarBase.isEmpty()) "" else {
+            val lugarBajada = bajarBase
+                .replaceFirst(Regex("""^(bájese|bajese|baje)\s+""", RegexOption.IGNORE_CASE), "")
+                .replaceFirst(Regex("""^(en\s+)+""", RegexOption.IGNORE_CASE), "")
+            "Bájese en $lugarBajada"
         }
 
         SegmentoRuta(0, codigo, abordarTexto,
