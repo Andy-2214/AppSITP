@@ -1,0 +1,281 @@
+{
+  "_descripcion": "Paleta tipo Google Maps medida en capturas reales del emulador (centro de Arequipa, zoom 14 y 16). Sirve de base para el estilo de MapLibre.",
+  "fondo": "#F7F5F5",
+  "zona_comercial": "#F8F0DE",
+  "parque_relleno": "#D3F8E2",
+  "parque_linea": "#8CD5B7",
+  "agua": "#90DAEE",
+  "edificio": "#EFEDED",
+  "edificio_borde": "#E3E1E1",
+  "calle": "#D8E0E7",
+  "via_rapida": "#8BA5C1",
+  "texto_calle": "#44566D",
+  "texto_zona": "#2F3034",
+  "halo_texto": "#FFFFFF",
+  "anchos_px": {
+    "16": {
+      "motorway": 28,
+      "trunk": 28,
+      "primary": 26,
+      "secondary": 24,
+      "tertiary": 19,
+      "unclassified": 13,
+      "residential": 13,
+      "living_street": 11,
+      "pedestrian": 9,
+      "service": 7,
+      "footway": 2.5,
+      "path": 2.5,
+      "steps": 2.5,
+      "otro": 7
+    },
+    "14": {
+      "motorway": 11,
+      "trunk": 11,
+      "primary": 9,
+      "secondary": 8,
+      "tertiary": 6.5,
+      "unclassified": 3.6,
+      "residential": 3.6,
+      "living_street": 3.2,
+      "pedestrian": 2.6,
+      "service": 1.6,
+      "footway": 0,
+      "path": 0,
+      "steps": 0,
+      "otro": 1.6
+    }
+  },
+  "tamano_texto_px": {
+    "16": 40,
+    "14": 30
+  },
+  "rio_ancho_px": {
+    "16": 46,
+    "14": 14
+  },
+  "quebrada_ancho_px": {
+    "16": 8,
+    "14": 3
+  },
+  "grupos_lugares": [
+    {
+      "id": "salud",
+      "nombre": "Salud",
+      "relleno": "#FCE8E6",
+      "texto": "#C5221F",
+      "prioridad": 7,
+      "reglas": {
+        "amenity": [
+          "hospital",
+          "clinic",
+          "doctors"
+        ],
+        "healthcare": [
+          "hospital",
+          "clinic",
+          "centre",
+          "doctor"
+        ],
+        "building": [
+          "hospital"
+        ]
+      },
+      "etiquetar": {
+        "amenity": [
+          "hospital",
+          "clinic"
+        ],
+        "healthcare": [
+          "hospital",
+          "clinic"
+        ],
+        "building": [
+          "hospital"
+        ]
+      }
+    },
+    {
+      "id": "educacion",
+      "nombre": "Educación",
+      "relleno": "#EDE7F6",
+      "texto": "#6A4FB3",
+      "prioridad": 5,
+      "reglas": {
+        "amenity": [
+          "school",
+          "university",
+          "college",
+          "kindergarten"
+        ],
+        "office": [
+          "educational_institution"
+        ],
+        "building": [
+          "university",
+          "school"
+        ]
+      },
+      "etiquetar": {
+        "amenity": [
+          "university",
+          "college"
+        ],
+        "building": [
+          "university"
+        ]
+      }
+    },
+    {
+      "id": "comercio",
+      "nombre": "Comercio y mercados",
+      "relleno": "#F8F0DE",
+      "texto": "#B06000",
+      "prioridad": 6,
+      "reglas": {
+        "amenity": [
+          "marketplace"
+        ],
+        "shop": [
+          "*"
+        ],
+        "landuse": [
+          "retail",
+          "commercial"
+        ],
+        "building": [
+          "commercial",
+          "retail"
+        ]
+      },
+      "etiquetar": {
+        "amenity": [
+          "marketplace"
+        ],
+        "shop": [
+          "mall",
+          "supermarket",
+          "department_store"
+        ]
+      }
+    },
+    {
+      "id": "parques",
+      "nombre": "Parques y deporte",
+      "relleno": "#D3F8E2",
+      "texto": "#137333",
+      "prioridad": 4,
+      "reglas": {
+        "leisure": [
+          "park",
+          "garden",
+          "pitch",
+          "playground",
+          "sports_centre",
+          "stadium"
+        ],
+        "landuse": [
+          "grass",
+          "recreation_ground"
+        ]
+      },
+      "etiquetar": {
+        "leisure": [
+          "park",
+          "stadium"
+        ]
+      }
+    },
+    {
+      "id": "cultura",
+      "nombre": "Turismo, cultura e iglesias",
+      "relleno": "#F3EDE4",
+      "texto": "#127F8A",
+      "prioridad": 8,
+      "reglas": {
+        "tourism": [
+          "museum",
+          "attraction",
+          "gallery",
+          "viewpoint"
+        ],
+        "historic": [
+          "*"
+        ],
+        "amenity": [
+          "place_of_worship"
+        ]
+      },
+      "etiquetar": {
+        "tourism": [
+          "museum"
+        ],
+        "amenity": [
+          "place_of_worship"
+        ],
+        "historic": [
+          "monument",
+          "monastery",
+          "church"
+        ]
+      }
+    },
+    {
+      "id": "transporte",
+      "nombre": "Transporte",
+      "relleno": "#E3EAF2",
+      "texto": "#1967D2",
+      "prioridad": 7,
+      "reglas": {
+        "amenity": [
+          "bus_station"
+        ],
+        "public_transport": [
+          "station"
+        ],
+        "railway": [
+          "station"
+        ]
+      },
+      "etiquetar": {
+        "amenity": [
+          "bus_station"
+        ],
+        "public_transport": [
+          "station"
+        ],
+        "railway": [
+          "station"
+        ]
+      }
+    },
+    {
+      "id": "gobierno",
+      "nombre": "Gobierno y servicios públicos",
+      "relleno": "#ECEFF1",
+      "texto": "#5F6368",
+      "prioridad": 6,
+      "reglas": {
+        "amenity": [
+          "townhall",
+          "police",
+          "courthouse",
+          "fire_station",
+          "post_office"
+        ],
+        "office": [
+          "government"
+        ]
+      },
+      "etiquetar": {
+        "amenity": [
+          "townhall",
+          "police",
+          "courthouse"
+        ]
+      }
+    }
+  ],
+  "separacion_etiquetas_lugar_px": 220,
+  "texto_agua": "#3A7FB0"
+}

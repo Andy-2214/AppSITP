@@ -1,0 +1,1345 @@
+{
+ "version": 8,
+ "name": "SITP Arequipa (datos OpenStreetMap)",
+ "metadata": {
+  "generado_por": "scripts/mapa/generar_estilo.py",
+  "fuente_letras": "sistema"
+ },
+ "sources": {
+  "arequipa": {
+   "type": "vector",
+   "url": "pmtiles://asset://arequipa.pmtiles",
+   "attribution": "© OpenStreetMap contributors"
+  }
+ },
+ "glyphs": "asset://mapa/glifos/{fontstack}/{range}.pbf",
+ "layers": [
+  {
+   "id": "fondo",
+   "type": "background",
+   "paint": {
+    "background-color": "#F7F5F5"
+   }
+  },
+  {
+   "id": "lugares_areas",
+   "type": "fill",
+   "source": "arequipa",
+   "source-layer": "lugares_areas",
+   "filter": [
+    "!=",
+    [
+     "get",
+     "grupo"
+    ],
+    "parques"
+   ],
+   "paint": {
+    "fill-color": [
+     "match",
+     [
+      "get",
+      "grupo"
+     ],
+     "salud",
+     "#FCE8E6",
+     "educacion",
+     "#EDE7F6",
+     "comercio",
+     "#F8F0DE",
+     "parques",
+     "#D3F8E2",
+     "cultura",
+     "#F3EDE4",
+     "transporte",
+     "#E3EAF2",
+     "gobierno",
+     "#ECEFF1",
+     "#F7F5F5"
+    ],
+    "fill-antialias": true
+   }
+  },
+  {
+   "id": "parques",
+   "type": "fill",
+   "source": "arequipa",
+   "source-layer": "lugares_areas",
+   "filter": [
+    "==",
+    [
+     "get",
+     "grupo"
+    ],
+    "parques"
+   ],
+   "paint": {
+    "fill-color": "#D3F8E2"
+   }
+  },
+  {
+   "id": "agua",
+   "type": "fill",
+   "source": "arequipa",
+   "source-layer": "agua",
+   "paint": {
+    "fill-color": "#90DAEE"
+   }
+  },
+  {
+   "id": "rios",
+   "type": "line",
+   "source": "arequipa",
+   "source-layer": "rios",
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round"
+   },
+   "paint": {
+    "line-color": "#90DAEE",
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      2
+     ],
+     [
+      "zoom"
+     ],
+     7,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "river",
+      1.2,
+      0.3
+     ],
+     13,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "river",
+      4.67,
+      1.0
+     ],
+     15,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "river",
+      15.33,
+      2.67
+     ],
+     17,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "river",
+      61.32,
+      10.68
+     ]
+    ]
+   }
+  },
+  {
+   "id": "calles",
+   "type": "line",
+   "source": "arequipa",
+   "source-layer": "calles",
+   "layout": {
+    "line-cap": "round",
+    "line-join": "round",
+    "line-sort-key": [
+     "index-of",
+     [
+      "get",
+      "clase"
+     ],
+     [
+      "literal",
+      [
+       "path",
+       "footway",
+       "steps",
+       "cycleway",
+       "track",
+       "service",
+       "pedestrian",
+       "living_street",
+       "residential",
+       "unclassified",
+       "tertiary",
+       "secondary",
+       "primary",
+       "trunk",
+       "motorway"
+      ]
+     ]
+    ]
+   },
+   "paint": {
+    "line-color": [
+     "match",
+     [
+      "get",
+      "clase"
+     ],
+     [
+      "footway",
+      "path",
+      "steps",
+      "cycleway"
+     ],
+     "#8CD5B7",
+     [
+      "motorway",
+      "trunk"
+     ],
+     "#8BA5C1",
+     "#D8E0E7"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "exponential",
+      2
+     ],
+     [
+      "zoom"
+     ],
+     7,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "path",
+      0.4,
+      "footway",
+      0.4,
+      "steps",
+      0.4,
+      "cycleway",
+      0.4,
+      "track",
+      0.4,
+      "service",
+      0.4,
+      "pedestrian",
+      0.4,
+      "living_street",
+      0.4,
+      "residential",
+      0.4,
+      "unclassified",
+      0.4,
+      "tertiary",
+      0.4,
+      "secondary",
+      0.4,
+      "primary",
+      0.4,
+      "trunk",
+      0.4,
+      "motorway",
+      0.4,
+      0.4
+     ],
+     11,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "path",
+      0.5,
+      "footway",
+      0.5,
+      "steps",
+      0.5,
+      "cycleway",
+      0.5,
+      "track",
+      0.5,
+      "service",
+      0.5,
+      "pedestrian",
+      0.5,
+      "living_street",
+      0.5,
+      "residential",
+      0.5,
+      "unclassified",
+      0.5,
+      "tertiary",
+      0.54,
+      "secondary",
+      0.67,
+      "primary",
+      0.75,
+      "trunk",
+      0.92,
+      "motorway",
+      0.92,
+      0.5
+     ],
+     13,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "path",
+      0.3,
+      "footway",
+      0.3,
+      "steps",
+      0.3,
+      "cycleway",
+      0.53,
+      "track",
+      0.53,
+      "service",
+      0.53,
+      "pedestrian",
+      0.87,
+      "living_street",
+      1.07,
+      "residential",
+      1.2,
+      "unclassified",
+      1.2,
+      "tertiary",
+      2.17,
+      "secondary",
+      2.67,
+      "primary",
+      3.0,
+      "trunk",
+      3.67,
+      "motorway",
+      3.67,
+      0.53
+     ],
+     15,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "path",
+      0.83,
+      "footway",
+      0.83,
+      "steps",
+      0.83,
+      "cycleway",
+      2.33,
+      "track",
+      2.33,
+      "service",
+      2.33,
+      "pedestrian",
+      3.0,
+      "living_street",
+      3.67,
+      "residential",
+      4.33,
+      "unclassified",
+      4.33,
+      "tertiary",
+      6.33,
+      "secondary",
+      8.0,
+      "primary",
+      8.67,
+      "trunk",
+      9.33,
+      "motorway",
+      9.33,
+      2.33
+     ],
+     17,
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      "path",
+      3.33,
+      "footway",
+      3.33,
+      "steps",
+      3.33,
+      "cycleway",
+      9.33,
+      "track",
+      9.33,
+      "service",
+      9.33,
+      "pedestrian",
+      12.0,
+      "living_street",
+      14.67,
+      "residential",
+      17.33,
+      "unclassified",
+      17.33,
+      "tertiary",
+      25.33,
+      "secondary",
+      32.0,
+      "primary",
+      34.67,
+      "trunk",
+      37.33,
+      "motorway",
+      37.33,
+      9.33
+     ]
+    ]
+   }
+  },
+  {
+   "id": "lugares_menores",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "lugares_nombres",
+   "minzoom": 15,
+   "filter": [
+    "all",
+    [
+     "!",
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      [
+       "hospital",
+       "university",
+       "college",
+       "marketplace",
+       "mall",
+       "department_store",
+       "park",
+       "stadium",
+       "museum",
+       "attraction",
+       "place_of_worship",
+       "bus_station",
+       "station",
+       "townhall",
+       "courthouse",
+       "monument",
+       "monastery",
+       "church",
+       "cathedral"
+      ],
+      true,
+      false
+     ]
+    ],
+    [
+     "!",
+     [
+      "match",
+      [
+       "get",
+       "clase"
+      ],
+      [
+       "school",
+       "clinic",
+       "pharmacy",
+       "bank",
+       "hotel",
+       "fuel",
+       "sports_centre",
+       "library",
+       "cinema",
+       "theatre",
+       "fire_station",
+       "police",
+       "post_office",
+       "community_centre",
+       "supermarket",
+       "convenience",
+       "garden",
+       "gallery",
+       "viewpoint",
+       "hostel"
+      ],
+      true,
+      false
+     ]
+    ]
+   ],
+   "layout": {
+    "icon-image": [
+     "concat",
+     "punto-",
+     [
+      "get",
+      "grupo"
+     ]
+    ],
+    "icon-size": 1,
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     9.0,
+     15,
+     10.0,
+     17,
+     11.5
+    ],
+    "text-anchor": "left",
+    "text-offset": [
+     0.7,
+     0
+    ],
+    "text-max-width": 9,
+    "text-justify": "left",
+    "symbol-sort-key": 3,
+    "text-padding": 4
+   },
+   "paint": {
+    "text-color": [
+     "match",
+     [
+      "get",
+      "grupo"
+     ],
+     "salud",
+     "#C5221F",
+     "educacion",
+     "#6A4FB3",
+     "comercio",
+     "#B06000",
+     "parques",
+     "#137333",
+     "cultura",
+     "#127F8A",
+     "transporte",
+     "#1967D2",
+     "gobierno",
+     "#5F6368",
+     "#5F6368"
+    ],
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.3
+   }
+  },
+  {
+   "id": "lugares_medianos",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "lugares_nombres",
+   "minzoom": 14,
+   "filter": [
+    "match",
+    [
+     "get",
+     "clase"
+    ],
+    [
+     "school",
+     "clinic",
+     "pharmacy",
+     "bank",
+     "hotel",
+     "fuel",
+     "sports_centre",
+     "library",
+     "cinema",
+     "theatre",
+     "fire_station",
+     "police",
+     "post_office",
+     "community_centre",
+     "supermarket",
+     "convenience",
+     "garden",
+     "gallery",
+     "viewpoint",
+     "hostel"
+    ],
+    true,
+    false
+   ],
+   "layout": {
+    "icon-image": [
+     "concat",
+     "punto-",
+     [
+      "get",
+      "grupo"
+     ]
+    ],
+    "icon-size": 1,
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     9.0,
+     15,
+     11.0,
+     17,
+     12.649999999999999
+    ],
+    "text-anchor": "left",
+    "text-offset": [
+     0.7,
+     0
+    ],
+    "text-max-width": 9,
+    "text-justify": "left",
+    "symbol-sort-key": 2,
+    "text-padding": 4
+   },
+   "paint": {
+    "text-color": [
+     "match",
+     [
+      "get",
+      "grupo"
+     ],
+     "salud",
+     "#C5221F",
+     "educacion",
+     "#6A4FB3",
+     "comercio",
+     "#B06000",
+     "parques",
+     "#137333",
+     "cultura",
+     "#127F8A",
+     "transporte",
+     "#1967D2",
+     "gobierno",
+     "#5F6368",
+     "#5F6368"
+    ],
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.3
+   }
+  },
+  {
+   "id": "lugares_principales",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "lugares_nombres",
+   "minzoom": 12,
+   "filter": [
+    "match",
+    [
+     "get",
+     "clase"
+    ],
+    [
+     "hospital",
+     "university",
+     "college",
+     "marketplace",
+     "mall",
+     "department_store",
+     "park",
+     "stadium",
+     "museum",
+     "attraction",
+     "place_of_worship",
+     "bus_station",
+     "station",
+     "townhall",
+     "courthouse",
+     "monument",
+     "monastery",
+     "church",
+     "cathedral"
+    ],
+    true,
+    false
+   ],
+   "layout": {
+    "icon-image": [
+     "concat",
+     "punto-",
+     [
+      "get",
+      "grupo"
+     ]
+    ],
+    "icon-size": 1,
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     9.0,
+     15,
+     11.0,
+     17,
+     12.649999999999999
+    ],
+    "text-anchor": "left",
+    "text-offset": [
+     0.7,
+     0
+    ],
+    "text-max-width": 9,
+    "text-justify": "left",
+    "symbol-sort-key": 1,
+    "text-padding": 4
+   },
+   "paint": {
+    "text-color": [
+     "match",
+     [
+      "get",
+      "grupo"
+     ],
+     "salud",
+     "#C5221F",
+     "educacion",
+     "#6A4FB3",
+     "comercio",
+     "#B06000",
+     "parques",
+     "#137333",
+     "cultura",
+     "#127F8A",
+     "transporte",
+     "#1967D2",
+     "gobierno",
+     "#5F6368",
+     "#5F6368"
+    ],
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.3
+   }
+  },
+  {
+   "id": "zonas",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "zonas",
+   "layout": {
+    "text-field": [
+     "upcase",
+     [
+      "get",
+      "name"
+     ]
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "match",
+     [
+      "get",
+      "clase"
+     ],
+     "city",
+     16,
+     [
+      "town",
+      "village"
+     ],
+     13,
+     11
+    ],
+    "text-letter-spacing": 0.08,
+    "text-max-width": 8,
+    "symbol-sort-key": [
+     "match",
+     [
+      "get",
+      "clase"
+     ],
+     "city",
+     0,
+     [
+      "town",
+      "suburb"
+     ],
+     1,
+     2
+    ]
+   },
+   "paint": {
+    "text-color": "#2F3034",
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "rios_nombres",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "rios",
+   "minzoom": 11,
+   "filter": [
+    "==",
+    [
+     "get",
+     "clase"
+    ],
+    "river"
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "text-field": [
+     "get",
+     "name"
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     10.0,
+     15,
+     13.33,
+     17,
+     15.3295
+    ],
+    "symbol-spacing": 400
+   },
+   "paint": {
+    "text-color": "#3A7FB0",
+    "text-halo-color": "#90DAEE",
+    "text-halo-width": 1
+   }
+  },
+  {
+   "id": "calles_nombres",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "calles",
+   "minzoom": 14,
+   "filter": [
+    "!",
+    [
+     "match",
+     [
+      "get",
+      "clase"
+     ],
+     [
+      "tertiary",
+      "secondary",
+      "primary",
+      "trunk",
+      "motorway"
+     ],
+     true,
+     false
+    ]
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "text-field": [
+     "case",
+     [
+      "==",
+      [
+       "slice",
+       [
+        "get",
+        "name"
+       ],
+       0,
+       8
+      ],
+      "Avenida "
+     ],
+     [
+      "concat",
+      "Av. ",
+      [
+       "slice",
+       [
+        "get",
+        "name"
+       ],
+       8
+      ]
+     ],
+     [
+      "case",
+      [
+       "==",
+       [
+        "slice",
+        [
+         "get",
+         "name"
+        ],
+        0,
+        6
+       ],
+       "Calle "
+      ],
+      [
+       "concat",
+       "C. ",
+       [
+        "slice",
+        [
+         "get",
+         "name"
+        ],
+        6
+       ]
+      ],
+      [
+       "case",
+       [
+        "==",
+        [
+         "slice",
+         [
+          "get",
+          "name"
+         ],
+         0,
+         6
+        ],
+        "Jirón "
+       ],
+       [
+        "concat",
+        "Jr. ",
+        [
+         "slice",
+         [
+          "get",
+          "name"
+         ],
+         6
+        ]
+       ],
+       [
+        "case",
+        [
+         "==",
+         [
+          "slice",
+          [
+           "get",
+           "name"
+          ],
+          0,
+          7
+         ],
+         "Pasaje "
+        ],
+        [
+         "concat",
+         "Pje. ",
+         [
+          "slice",
+          [
+           "get",
+           "name"
+          ],
+          7
+         ]
+        ],
+        [
+         "case",
+         [
+          "==",
+          [
+           "slice",
+           [
+            "get",
+            "name"
+           ],
+           0,
+           13
+          ],
+          "Prolongación "
+         ],
+         [
+          "concat",
+          "Prol. ",
+          [
+           "slice",
+           [
+            "get",
+            "name"
+           ],
+           13
+          ]
+         ],
+         [
+          "get",
+          "name"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     10.0,
+     15,
+     13.33,
+     17,
+     15.3295
+    ],
+    "symbol-spacing": 300,
+    "text-max-angle": 30,
+    "text-padding": 2,
+    "symbol-sort-key": [
+     "-",
+     20,
+     [
+      "index-of",
+      [
+       "get",
+       "clase"
+      ],
+      [
+       "literal",
+       [
+        "path",
+        "footway",
+        "steps",
+        "cycleway",
+        "track",
+        "service",
+        "pedestrian",
+        "living_street",
+        "residential",
+        "unclassified",
+        "tertiary",
+        "secondary",
+        "primary",
+        "trunk",
+        "motorway"
+       ]
+      ]
+     ]
+    ]
+   },
+   "paint": {
+    "text-color": "#44566D",
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.5
+   }
+  },
+  {
+   "id": "calles_nombres_principales",
+   "type": "symbol",
+   "source": "arequipa",
+   "source-layer": "calles",
+   "minzoom": 12,
+   "filter": [
+    "match",
+    [
+     "get",
+     "clase"
+    ],
+    [
+     "tertiary",
+     "secondary",
+     "primary",
+     "trunk",
+     "motorway"
+    ],
+    true,
+    false
+   ],
+   "layout": {
+    "symbol-placement": "line",
+    "text-field": [
+     "case",
+     [
+      "==",
+      [
+       "slice",
+       [
+        "get",
+        "name"
+       ],
+       0,
+       8
+      ],
+      "Avenida "
+     ],
+     [
+      "concat",
+      "Av. ",
+      [
+       "slice",
+       [
+        "get",
+        "name"
+       ],
+       8
+      ]
+     ],
+     [
+      "case",
+      [
+       "==",
+       [
+        "slice",
+        [
+         "get",
+         "name"
+        ],
+        0,
+        6
+       ],
+       "Calle "
+      ],
+      [
+       "concat",
+       "C. ",
+       [
+        "slice",
+        [
+         "get",
+         "name"
+        ],
+        6
+       ]
+      ],
+      [
+       "case",
+       [
+        "==",
+        [
+         "slice",
+         [
+          "get",
+          "name"
+         ],
+         0,
+         6
+        ],
+        "Jirón "
+       ],
+       [
+        "concat",
+        "Jr. ",
+        [
+         "slice",
+         [
+          "get",
+          "name"
+         ],
+         6
+        ]
+       ],
+       [
+        "case",
+        [
+         "==",
+         [
+          "slice",
+          [
+           "get",
+           "name"
+          ],
+          0,
+          7
+         ],
+         "Pasaje "
+        ],
+        [
+         "concat",
+         "Pje. ",
+         [
+          "slice",
+          [
+           "get",
+           "name"
+          ],
+          7
+         ]
+        ],
+        [
+         "case",
+         [
+          "==",
+          [
+           "slice",
+           [
+            "get",
+            "name"
+           ],
+           0,
+           13
+          ],
+          "Prolongación "
+         ],
+         [
+          "concat",
+          "Prol. ",
+          [
+           "slice",
+           [
+            "get",
+            "name"
+           ],
+           13
+          ]
+         ],
+         [
+          "get",
+          "name"
+         ]
+        ]
+       ]
+      ]
+     ]
+    ],
+    "text-font": [
+     "Roboto Regular"
+    ],
+    "text-size": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13,
+     10.0,
+     15,
+     13.33,
+     17,
+     15.3295
+    ],
+    "symbol-spacing": 300,
+    "text-max-angle": 30,
+    "text-padding": 2,
+    "symbol-sort-key": [
+     "-",
+     20,
+     [
+      "index-of",
+      [
+       "get",
+       "clase"
+      ],
+      [
+       "literal",
+       [
+        "path",
+        "footway",
+        "steps",
+        "cycleway",
+        "track",
+        "service",
+        "pedestrian",
+        "living_street",
+        "residential",
+        "unclassified",
+        "tertiary",
+        "secondary",
+        "primary",
+        "trunk",
+        "motorway"
+       ]
+      ]
+     ]
+    ]
+   },
+   "paint": {
+    "text-color": "#44566D",
+    "text-halo-color": "#FFFFFF",
+    "text-halo-width": 1.5
+   }
+  }
+ ],
+ "font-faces": {
+  "Roboto Regular": [
+   {
+    "url": "file:///system/fonts/Roboto-Regular.ttf",
+    "unicode-range": [
+     "U+0000-FFFF"
+    ]
+   }
+  ]
+ }
+}

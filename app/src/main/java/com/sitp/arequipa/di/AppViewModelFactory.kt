@@ -7,6 +7,7 @@ import com.sitp.arequipa.presentation.busqueda.BusquedaViewModel
 import com.sitp.arequipa.presentation.busqueda.UbicacionViewModel
 import com.sitp.arequipa.presentation.comentarios.ComentarioViewModel
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
+import com.sitp.arequipa.presentation.map.MapaViewModel
 import com.sitp.arequipa.presentation.perfil.PerfilViewModel
 
 class AppViewModelFactory(
@@ -30,6 +31,12 @@ class AppViewModelFactory(
                 UbicacionViewModel(
                     obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase,
                     obtenerAtribucionDatos = container.obtenerAtribucionDatosUseCase
+                ) as T
+
+            modelClass.isAssignableFrom(MapaViewModel::class.java) ->
+                MapaViewModel(
+                    obtenerUbicacionActual = container.obtenerUbicacionActualUseCase,
+                    seguirUbicacionUseCase = container.seguirUbicacionUseCase
                 ) as T
 
             modelClass.isAssignableFrom(HistorialViewModel::class.java) ->

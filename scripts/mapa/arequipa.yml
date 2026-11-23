@@ -1,0 +1,186 @@
+schema_name: SITP Arequipa v2
+schema_description: >
+  Mapa base de la provincia de Arequipa para la app (sin conexión): todas las calles, agua, lugares
+  agrupados en 7 grupos por categorías de OSM (con nombre en casi todos: restaurantes, tiendas, farmacias,
+  paraderos...) y nombres de zonas. Solo datos de OSM, sin relieve ni vegetación natural.
+attribution: <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>
+args:
+  osm_path:
+    description: Archivo .osm.pbf descargado de Geofabrik
+    default: peru.osm.pbf
+sources:
+  osm:
+    type: osm
+    local_path: '${ args.osm_path }'
+
+# ── Los 7 grupos de lugares (mismas categorías de OSM en el mapa y en el estilo) ──
+definitions:
+  salud: &salud
+    amenity: [ hospital, clinic, doctors, dentist, pharmacy, veterinary ]
+    healthcare: __any__
+  educacion: &educacion
+    amenity: [ school, university, college, kindergarten, language_school, driving_school, music_school ]
+    office: [ educational_institution ]
+  comercio: &comercio
+    shop: __any__
+    amenity: [ marketplace, restaurant, cafe, fast_food, bar, pub, ice_cream, food_court, fuel, car_wash ]
+    craft: __any__
+  parques: &parques
+    leisure: [ park, garden, pitch, playground, sports_centre, stadium, fitness_centre, swimming_pool, recreation_ground ]
+  cultura: &cultura
+    tourism: [ museum, attraction, gallery, viewpoint, hotel, hostel, guest_house, artwork ]
+    historic: __any__
+    amenity: [ place_of_worship, theatre, cinema, library, arts_centre, events_venue ]
+  transporte: &transporte
+    amenity: [ bus_station, taxi, parking ]
+    public_transport: [ station, platform, stop_position ]
+    highway: [ bus_stop ]
+    railway: [ station ]
+  gobierno: &gobierno
+    amenity: [ townhall, police, courthouse, fire_station, post_office, bank, community_centre, social_facility ]
+    office: __any__
+
+layers:
+
+# ── Calles: todas, incluidas las alejadas y los caminos de tierra ─────────────
+- id: calles
+  features:
+  - source: osm
+    geometry: line
+    min_size: 0
+    min_zoom:
+      default_value: 14
+      overrides:
+        6:
+          highway: [ motorway, motorway_link, trunk, trunk_link ]
+        8:
+          highway: [ primary, primary_link ]
+        9:
+          highway: [ secondary, secondary_link ]
+        10:
+          highway: [ tertiary, tertiary_link ]
+        12:
+          highway: [ residential, unclassified, living_street, pedestrian ]
+        13:
+          highway: [ service, track ]
+    include_when:
+      highway:
+      - motorway
+      - motorway_link
+      - trunk
+      - trunk_link
+      - primary
+      - primary_link
+      - secondary
+      - secondary_link
+      - tertiary
+      - tertiary_link
+      - unclassified
+      - residential
+      - living_street
+      - pedestrian
+      - service
+      - track
+      - footway
+      - path
+      - steps
+      - cycleway
+    attributes:
+    - key: clase
+      value: '${ match_value.replace("_link", "") }'
+    - key: name
+      min_zoom: 12
+
+# ── Agua ──────────────────────────────────────────────────────────────────────
+- id: agua
+  features:
+  - source: osm
+    geometry: polygon
+    min_zoom: 8
+    include_when:
+      natural: [ water ]
+      waterway: [ riverbank, canal ]
+      landuse: [ reservoir, basin ]
+- id: rios
+  features:
+  - source: osm
+    geometry: line
+    min_zoom:
+      default_value: 12
+      overrides:
+        8:
+          waterway: [ river ]
+    include_when:
+      waterway: [ river, stream, canal ]
+    attributes:
+    - key: clase
+      type: match_value
+    - key: name
+
+# ── Áreas de lugares (relleno de color por grupo) ─────────────────────────────
+- id: lugares_areas
+  features:
+  - { source: osm, geometry: polygon, min_zoom: 12, include_when: *salud,      attributes: [ { key: grupo, value: salud } ] }
+  - { source: osm, geometry: polygon, min_zoom: 12, include_when: *educacion,  attributes: [ { key: grupo, value: educacion } ] }
+  - source: osm
+    geometry: polygon
+    min_zoom: 12
+    include_when:
+      __any__:
+      - *comercio
+      - landuse: [ retail, commercial ]
+    attributes: [ { key: grupo, value: comercio } ]
+  - source: osm
+    geometry: polygon
+    min_zoom: 12
+    include_when:
+      __any__:
+      - *parques
+      - landuse: [ grass, recreation_ground ]
+    attributes: [ { key: grupo, value: parques } ]
+  - { source: osm, geometry: polygon, min_zoom: 12, include_when: *cultura,    attributes: [ { key: grupo, value: cultura } ] }
+  - { source: osm, geometry: polygon, min_zoom: 12, include_when: *transporte, attributes: [ { key: grupo, value: transporte } ] }
+  - { source: osm, geometry: polygon, min_zoom: 12, include_when: *gobierno,   attributes: [ { key: grupo, value: gobierno } ] }
+
+# ── Nombres de lugares: casi todos los que tienen nombre (puntos y centros de áreas) ──
+# "clase" = valor de la etiqueta de OSM (restaurant, convenience, hospital...): el estilo decide
+# desde qué zoom se ve cada uno (lo importante primero, lo pequeño al acercarse).
+- id: lugares_nombres
+  features:
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *salud,      exclude_when: { name: '' }, attributes: [ { key: grupo, value: salud },      { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *salud,      exclude_when: { name: '' }, attributes: [ { key: grupo, value: salud },      { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *educacion,  exclude_when: { name: '' }, attributes: [ { key: grupo, value: educacion },  { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *educacion,  exclude_when: { name: '' }, attributes: [ { key: grupo, value: educacion },  { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *comercio,   exclude_when: { name: '' }, attributes: [ { key: grupo, value: comercio },   { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *comercio,   exclude_when: { name: '' }, attributes: [ { key: grupo, value: comercio },   { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *parques,    exclude_when: { name: '' }, attributes: [ { key: grupo, value: parques },    { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *parques,    exclude_when: { name: '' }, attributes: [ { key: grupo, value: parques },    { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *cultura,    exclude_when: { name: '' }, attributes: [ { key: grupo, value: cultura },    { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *cultura,    exclude_when: { name: '' }, attributes: [ { key: grupo, value: cultura },    { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *transporte, exclude_when: { name: '' }, attributes: [ { key: grupo, value: transporte }, { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *transporte, exclude_when: { name: '' }, attributes: [ { key: grupo, value: transporte }, { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: point,            min_zoom: 14, include_when: *gobierno,   exclude_when: { name: '' }, attributes: [ { key: grupo, value: gobierno },   { key: clase, type: match_value }, { key: name } ] }
+  - { source: osm, geometry: polygon_centroid, min_zoom: 13, include_when: *gobierno,   exclude_when: { name: '' }, attributes: [ { key: grupo, value: gobierno },   { key: clase, type: match_value }, { key: name } ] }
+
+# ── Nombres de distritos, pueblos y barrios ───────────────────────────────────
+- id: zonas
+  features:
+  - source: osm
+    geometry: point
+    min_zoom:
+      default_value: 13
+      overrides:
+        8:
+          place: [ city, town ]
+        10:
+          place: [ village, suburb ]
+        12:
+          place: [ hamlet, neighbourhood ]
+    include_when:
+      place: [ city, town, village, suburb, hamlet, neighbourhood, quarter ]
+    exclude_when:
+      name: ''
+    attributes:
+    - key: clase
+      tag_value: place
+    - key: name

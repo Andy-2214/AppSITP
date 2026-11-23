@@ -19,4 +19,3 @@ kotlin.code.style=official
 # tus propias claves. NUNCA subas gradle.properties al repositorio.
 # ─────────────────────────────────────────────────────────────────────────────
 GROQ_API_KEY=TU_CLAVE_GROQ_AQUI
-GOOGLE_MAPS_API_KEY=TU_CLAVE_GOOGLE_MAPS_AQUI
