@@ -1,0 +1,94 @@
+name: DevSecOps
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: chmod +x gradlew
+      - name: Crear gradle.properties para CI
+        run: |
+          cp gradle.properties.example gradle.properties
+          echo "" >> gradle.properties
+          echo "android.disallowKotlinSourceSets=false" >> gradle.properties
+      - name: Crear google-services.json dummy para CI
+        run: |
+          PKG=$(grep -oP 'applicationId\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          echo "applicationId detectado: $PKG"
+          cat > app/google-services.json <<EOF
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "dummy-ci",
+              "storage_bucket": "dummy-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789012:android:0000000000000000",
+                  "android_client_info": { "package_name": "$PKG" }
+                },
+                "api_key": [{ "current_key": "DUMMY_KEY_CI" }]
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+      - run: ./gradlew assembleDebug lint
+
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          build-mode: manual
+      - run: chmod +x gradlew
+      - name: Crear gradle.properties para CI
+        run: |
+          cp gradle.properties.example gradle.properties
+          echo "" >> gradle.properties
+          echo "android.disallowKotlinSourceSets=false" >> gradle.properties
+      - name: Crear google-services.json dummy para CI
+        run: |
+          PKG=$(grep -oP 'applicationId\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)
+          echo "applicationId detectado: $PKG"
+          cat > app/google-services.json <<EOF
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "dummy-ci",
+              "storage_bucket": "dummy-ci.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789012:android:0000000000000000",
+                  "android_client_info": { "package_name": "$PKG" }
+                },
+                "api_key": [{ "current_key": "DUMMY_KEY_CI" }]
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+      - run: ./gradlew assembleDebug
+      - uses: github/codeql-action/analyze@v3
