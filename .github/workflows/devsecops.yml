@@ -19,6 +19,11 @@ jobs:
           distribution: temurin
           java-version: 17
       - run: chmod +x gradlew
+      - name: Crear gradle.properties para CI
+        run: |
+          cp gradle.properties.example gradle.properties
+          echo "" >> gradle.properties
+          echo "android.disallowKotlinSourceSets=false" >> gradle.properties
       - run: ./gradlew assembleDebug lint
 
   codeql:
@@ -34,5 +39,10 @@ jobs:
           languages: java-kotlin
           build-mode: manual
       - run: chmod +x gradlew
+      - name: Crear gradle.properties para CI
+        run: |
+          cp gradle.properties.example gradle.properties
+          echo "" >> gradle.properties
+          echo "android.disallowKotlinSourceSets=false" >> gradle.properties
       - run: ./gradlew assembleDebug
       - uses: github/codeql-action/analyze@v3
