@@ -1,6 +1,7 @@
 package com.sitp.arequipa.data.repository
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.sitp.arequipa.data.local.db.AppDatabase
 import com.sitp.arequipa.data.local.entity.CoordenadaEntity
 import com.sitp.arequipa.data.local.entity.CuencaEntity
@@ -15,7 +16,8 @@ import kotlinx.coroutines.withContext
 
 class RouteRepositoryImpl private constructor(
     private val database: AppDatabase,
-    private val remoteSource: FirestoreRouteSource
+    private val remoteSource: FirestoreRouteSource,
+    private val prefs: SharedPreferences
 ) : RouteRepository {
 
     private val rutaDao = database.rutaDao()
@@ -49,6 +51,24 @@ class RouteRepositoryImpl private constructor(
 
     override suspend fun sincronizarConServidor(): Unit = withContext(Dispatchers.IO) {
         try {
+            // 0. Contador metadatos/version: 1 sola lectura. Si no cambio desde la ultima
+            //    descarga (y Room tiene datos), no se descarga nada. Se compara con "distinto".
+            //    Si el documento no existe o falla su lectura, se hace la descarga completa.
+            val versionRemota: Long? = try {
+                remoteSource.leerVersionRutas()
+            } catch (e: Exception) {
+                println("DEBUG RouteRepository: No se pudo leer metadatos/version (${e.message}). Descarga completa.")
+                null
+            }
+            if (versionRemota != null) {
+                val versionLocal = prefs.getLong(KEY_VERSION_RUTAS, -1L)
+                val roomVacio = rutaDao.obtenerRutasSync().isEmpty()
+                if (versionRemota == versionLocal && !roomVacio) {
+                    println("DEBUG RouteRepository: metadatos/version = $versionRemota sin cambios. No se descarga nada.")
+                    return@withContext
+                }
+            }
+
             val documents = remoteSource.descargarRutas()
             if (documents.isEmpty()) return@withContext
 
@@ -76,6 +96,7 @@ class RouteRepositoryImpl private constructor(
 
             if (!rutasCambiaron && !cuencasCambiaron) {
                 println("DEBUG RouteRepository: Rutas y cuencas locales ya sincronizadas. Omitiendo reescritura de Room.")
+                guardarVersion(versionRemota)
                 return@withContext
             }
 
@@ -153,6 +174,10 @@ class RouteRepositoryImpl private constructor(
             if (rutasEntities.isNotEmpty()) {
                 rutaDao.actualizarCache(cuencasRemotas, rutasEntities, coordenadasEntities)
                 println("DEBUG RouteRepository: Room SQLite actualizado con ${cuencasRemotas.size} cuencas, ${rutasEntities.size} rutas y ${coordenadasEntities.size} coordenadas.")
+                // Se guarda la version leida ANTES de descargar (no se vuelve a leer), y solo
+                // si la descarga termino bien: si algo cambia durante la descarga, la proxima
+                // apertura lo detecta.
+                guardarVersion(versionRemota)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -160,7 +185,14 @@ class RouteRepositoryImpl private constructor(
         }
     }
 
+    private fun guardarVersion(version: Long?) {
+        if (version != null) prefs.edit().putLong(KEY_VERSION_RUTAS, version).apply()
+    }
+
     companion object {
+        private const val PREFS_SYNC = "sitp_sync"
+        private const val KEY_VERSION_RUTAS = "version_rutas"
+
         @Volatile
         private var INSTANCE: RouteRepositoryImpl? = null
 
@@ -168,7 +200,8 @@ class RouteRepositoryImpl private constructor(
             return INSTANCE ?: synchronized(this) {
                 val db = AppDatabase.getDatabase(context)
                 val remote = FirestoreRouteSource()
-                val instance = RouteRepositoryImpl(db, remote)
+                val prefs = context.applicationContext.getSharedPreferences(PREFS_SYNC, Context.MODE_PRIVATE)
+                val instance = RouteRepositoryImpl(db, remote, prefs)
                 INSTANCE = instance
                 instance
             }
