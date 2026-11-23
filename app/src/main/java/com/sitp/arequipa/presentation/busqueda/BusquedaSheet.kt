@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.maps.model.LatLng
 import com.sitp.arequipa.di.provideViewModelFactory
+import com.sitp.arequipa.domain.model.AtribucionDatos
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
 
 private val BusRed      = Color(0xFFC62828)
@@ -168,11 +170,13 @@ fun BusquedaSheet(
     rutaEtiquetas: Map<String, String> = emptyMap(),
     rutaCombis: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(factory = provideViewModelFactory()),
-    historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory())
+    historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory()),
+    ubicacionViewModel: UbicacionViewModel = viewModel(factory = provideViewModelFactory())
 ) {
     var preferencia   by remember { mutableStateOf("tiempo") }
     var consultaExtra by remember { mutableStateOf("") }
     val busquedaState by busquedaViewModel.busquedaState.collectAsState()
+    val atribucionDatos by ubicacionViewModel.atribucion.collectAsState()
 
     // ── Nuevo estado: panel minimizado ────────────────────────────────────
     var minimizado by remember { mutableStateOf(false) }
@@ -410,6 +414,7 @@ fun BusquedaSheet(
                         }
                         is BusquedaState.Success -> {
                             ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas, rutaCombis)
+                            atribucionDatos?.let { CreditoFuenteDatos(it) }
                         }
                         is BusquedaState.Error -> {
                             Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
@@ -445,6 +450,22 @@ fun BusquedaSheet(
             }
         }
     }
+}
+
+// ── Crédito de la fuente de los nombres de calles (lo exige su licencia, ver ADR-002) ──
+@Composable
+private fun CreditoFuenteDatos(atribucion: AtribucionDatos) {
+    val uriHandler = LocalUriHandler.current
+    val enlace = atribucion.enlace
+    Text(
+        text = "Nombres de calles: ${atribucion.texto}",
+        color = BusGray,
+        fontSize = 11.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (enlace != null) Modifier.clickable { uriHandler.openUri(enlace) } else Modifier)
+            .padding(vertical = 4.dp)
+    )
 }
 
 // ── Timeline de resultados ────────────────────────────────────────────────────

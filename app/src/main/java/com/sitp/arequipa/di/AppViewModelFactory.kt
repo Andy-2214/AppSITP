@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.sitp.arequipa.presentation.auth.AuthViewModel
 import com.sitp.arequipa.presentation.busqueda.BusquedaViewModel
+import com.sitp.arequipa.presentation.busqueda.UbicacionViewModel
 import com.sitp.arequipa.presentation.comentarios.ComentarioViewModel
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
 import com.sitp.arequipa.presentation.perfil.PerfilViewModel
@@ -23,6 +24,12 @@ class AppViewModelFactory(
                     reenviarVerificacionUseCase = container.reenviarVerificacionUseCase,
                     logoutUseCase = container.logoutUseCase,
                     verificarSesionUseCase = container.verificarSesionUseCase
+                ) as T
+
+            modelClass.isAssignableFrom(UbicacionViewModel::class.java) ->
+                UbicacionViewModel(
+                    obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase,
+                    obtenerAtribucionDatos = container.obtenerAtribucionDatosUseCase
                 ) as T
 
             modelClass.isAssignableFrom(HistorialViewModel::class.java) ->
