@@ -1,7 +1,15 @@
 package com.sitp.arequipa.presentation.map
 
 import android.Manifest
-import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.sitp.arequipa.domain.model.Coordenada
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,7 +26,6 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Forum
-import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MyLocation
@@ -44,18 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapStyleOptions
 import com.sitp.arequipa.di.AppContainer
 import com.sitp.arequipa.di.provideViewModelFactory
-import com.google.maps.android.compose.*
 import com.sitp.arequipa.presentation.busqueda.BusquedaSheet
 import com.sitp.arequipa.presentation.comentarios.ComentariosSheet
 import com.sitp.arequipa.presentation.historial.HistorialScreen
@@ -92,13 +89,13 @@ data class RutaMapa(
 
 // ── Guía visual GPS ───────────────────────────────────────────────────────────
 data class TramoGuia(
-    val puntos: List<LatLng>,
+    val puntos: List<Coordenada>,
     val color: Color,
     val esCaminata: Boolean = false
 )
 
 data class MarkerRutaGuia(
-    val posicion: LatLng,
+    val posicion: Coordenada,
     val codigo: String,
     val codigoCombi: String,
     val color: String
@@ -109,8 +106,8 @@ data class MarkerRutaGuia(
 // Si la ruta solo tiene coordenadas de IDA (vuelta vacía), devuelve las de IDA.
 fun elegirDireccion(
     ruta: RutaMapa,
-    origenLatLng: LatLng,
-    destinoLatLng: LatLng
+    origenPunto: Coordenada,
+    destinoPunto: Coordenada
 ): List<Map<String, Double>> {
     if (ruta.coordenadasVuelta.isEmpty()) return ruta.coordenadas  // sin vuelta → IDA siempre
 
@@ -129,12 +126,12 @@ fun elegirDireccion(
     ptsIda.forEachIndexed { idx, pt ->
         val lat = pt["lat"] ?: 0.0
         val lng = pt["lng"] ?: 0.0
-        val dO = distSq(lat, lng, origenLatLng.latitude, origenLatLng.longitude)
+        val dO = distSq(lat, lng, origenPunto.lat, origenPunto.lng)
         if (dO < minDistOIda) {
             minDistOIda = dO
             idxOIda = idx
         }
-        val dD = distSq(lat, lng, destinoLatLng.latitude, destinoLatLng.longitude)
+        val dD = distSq(lat, lng, destinoPunto.lat, destinoPunto.lng)
         if (dD < minDistDIda) {
             minDistDIda = dD
             idxDIda = idx
@@ -152,12 +149,12 @@ fun elegirDireccion(
     ptsVuelta.forEachIndexed { idx, pt ->
         val lat = pt["lat"] ?: 0.0
         val lng = pt["lng"] ?: 0.0
-        val dO = distSq(lat, lng, origenLatLng.latitude, origenLatLng.longitude)
+        val dO = distSq(lat, lng, origenPunto.lat, origenPunto.lng)
         if (dO < minDistOVuelta) {
             minDistOVuelta = dO
             idxOVuelta = idx
         }
-        val dD = distSq(lat, lng, destinoLatLng.latitude, destinoLatLng.longitude)
+        val dD = distSq(lat, lng, destinoPunto.lat, destinoPunto.lng)
         if (dD < minDistDVuelta) {
             minDistDVuelta = dD
             idxDVuelta = idx
@@ -179,22 +176,22 @@ fun elegirDireccion(
 
 fun calcularTramo(
     coordenadas: List<Map<String, Double>>,
-    desdeLatLng: LatLng,
-    hastaLatLng: LatLng
-): List<LatLng> {
+    desdeLatLng: Coordenada,
+    hastaLatLng: Coordenada
+): List<Coordenada> {
     val puntos = coordenadas.mapNotNull { coord ->
         val lat = coord["lat"] ?: return@mapNotNull null
         val lng = coord["lng"] ?: return@mapNotNull null
-        LatLng(lat, lng)
+        Coordenada(lat, lng)
     }
     if (puntos.size < 2) return emptyList()
 
-    fun distMetros(a: LatLng, b: LatLng): Double {
+    fun distMetros(a: Coordenada, b: Coordenada): Double {
         val R = 6371000.0
-        val dLat = Math.toRadians(b.latitude - a.latitude)
-        val dLng = Math.toRadians(b.longitude - a.longitude)
+        val dLat = Math.toRadians(b.lat - a.lat)
+        val dLng = Math.toRadians(b.lng - a.lng)
         val x = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(Math.toRadians(a.latitude)) * Math.cos(Math.toRadians(b.latitude)) *
+                Math.cos(Math.toRadians(a.lat)) * Math.cos(Math.toRadians(b.lat)) *
                 Math.sin(dLng/2) * Math.sin(dLng/2)
         return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x))
     }
@@ -216,7 +213,7 @@ fun calcularTramo(
 }
 
 fun crearTramos(
-    segmento: List<LatLng>,
+    segmento: List<Coordenada>,
     colorBus: Color,
     agregarInicio: Boolean = true,
     agregarFin: Boolean = true
@@ -243,19 +240,19 @@ fun crearTramos(
 fun encontrarAcercamiento(
     coords1: List<Map<String, Double>>,
     coords2: List<Map<String, Double>>
-): Triple<LatLng, LatLng, Double> {
+): Triple<Coordenada, Coordenada, Double> {
     val pts1 = coords1.mapNotNull { c ->
         val la = c["lat"] ?: return@mapNotNull null
         val ln = c["lng"] ?: return@mapNotNull null
-        LatLng(la, ln)
+        Coordenada(la, ln)
     }
     val pts2 = coords2.mapNotNull { c ->
         val la = c["lat"] ?: return@mapNotNull null
         val ln = c["lng"] ?: return@mapNotNull null
-        LatLng(la, ln)
+        Coordenada(la, ln)
     }
     if (pts1.isEmpty() || pts2.isEmpty()) {
-        return Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+        return Triple(Coordenada(0.0, 0.0), Coordenada(0.0, 0.0), Double.MAX_VALUE)
     }
 
     var bestPt1 = pts1.first()
@@ -264,8 +261,8 @@ fun encontrarAcercamiento(
 
     for (p1 in pts1) {
         for (p2 in pts2) {
-            val dlat = p1.latitude - p2.latitude
-            val dlng = p1.longitude - p2.longitude
+            val dlat = p1.lat - p2.lat
+            val dlng = p1.lng - p2.lng
             val d = dlat * dlat + dlng * dlng
             if (d < minDist) {
                 minDist = d
@@ -278,31 +275,34 @@ fun encontrarAcercamiento(
 }
 
 // ── Utilidades ───────────────────────────────────────────────────────────────
-@SuppressLint("MissingPermission")
-fun obtenerUbicacion(
-    context: android.content.Context,
-    onUbicacion: (android.location.Location) -> Unit
-) {
-    LocationServices.getFusedLocationProviderClient(context)
-        .lastLocation
-        .addOnSuccessListener { location -> location?.let { onUbicacion(it) } }
+// Zooms en la escala de MapLibre (teselas de 512 px): uno menos que los que usaba el mapa anterior
+// para mostrar la misma área (zoom 16 de antes = 15 ahora).
+private const val ZOOM_CIUDAD = 12.0
+private const val ZOOM_UBICACION_INICIAL = 14.0
+private const val ZOOM_MI_UBICACION = 15.0
+private val LIMITES_MAPA = LimitesMapa(Coordenada(-16.5500, -71.6500), Coordenada(-16.2500, -71.4000))
+private val PERMISOS_UBICACION = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+/** Coordenadas de una ruta (formato de RutaMapa) como puntos del mapa. */
+fun aCoordenadas(coords: List<Map<String, Double>>): List<Coordenada> = coords.mapNotNull { c ->
+    val lat = c["lat"] ?: return@mapNotNull null
+    val lng = c["lng"] ?: return@mapNotNull null
+    Coordenada(lat, lng)
 }
 
-fun puntoEnRuta(click: LatLng, puntos: List<LatLng>, tolerancia: Double = 0.002): Boolean {
+fun puntoEnRuta(click: Coordenada, puntos: List<Coordenada>, tolerancia: Double = 0.002): Boolean {
     for (i in 0 until puntos.size - 1) {
-        val lat = (puntos[i].latitude + puntos[i + 1].latitude) / 2
-        val lng = (puntos[i].longitude + puntos[i + 1].longitude) / 2
-        if (Math.abs(click.latitude - lat) < tolerancia &&
-            Math.abs(click.longitude - lng) < tolerancia
+        val lat = (puntos[i].lat + puntos[i + 1].lat) / 2
+        val lng = (puntos[i].lng + puntos[i + 1].lng) / 2
+        if (Math.abs(click.lat - lat) < tolerancia &&
+            Math.abs(click.lng - lng) < tolerancia
         ) return true
     }
     return false
 }
 
-fun String.toLatLng(): LatLng? = try {
-    val parts = this.split(",").map { it.trim() }
-    LatLng(parts[0].toDouble(), parts[1].toDouble())
-} catch (e: Exception) { null }
+/** Punto guardado como texto en el historial ("-16.3971, -71.5371"). */
+fun String.toCoordenada(): Coordenada? = Coordenada.desdeTexto(this)
 
 fun parseColor(hex: String): Color = try {
     Color(android.graphics.Color.parseColor(hex))
@@ -312,7 +312,7 @@ fun parseColor(hex: String): Color = try {
 private enum class NavTab { MAPA, HISTORIAL, PERFIL }
 
 // ── Pantalla principal ───────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     onLogout: () -> Unit,
@@ -322,17 +322,15 @@ fun MapScreen(
     destinoInicial: String? = null,
     preferenciaInicial: String? = null
 ) {
-    val arequipa = LatLng(-16.4090, -71.5375)
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(arequipa, 13f)
-    }
+    val arequipa = Coordenada(-16.4090, -71.5375)
+    val controlCamara = remember { ControlCamara() }
+    val mapaViewModel: MapaViewModel = viewModel(factory = provideViewModelFactory())
 
     var rutas by remember { mutableStateOf<List<RutaMapa>>(emptyList()) }
     var rutasVisibles by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val routeRepository = remember { AppContainer.getInstance(context).routeRepository }
-    var mapType by remember { mutableStateOf(MapType.NORMAL) }
     var rutasResaltadas by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     var tramosGuia by remember { mutableStateOf<List<TramoGuia>>(emptyList()) }
@@ -347,11 +345,19 @@ fun MapScreen(
     // Guarda las coordenadas seleccionadas para cada código recomendado en la búsqueda activa
     var coordsRecomendadas by remember { mutableStateOf<Map<String, List<Map<String, Double>>>>(emptyMap()) }
     var marcadoresRuta by remember { mutableStateOf<List<MarkerRutaGuia>>(emptyList()) }
-    var marcadoresTransbordo by remember { mutableStateOf<List<LatLng>>(emptyList()) }
-    val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    var marcadoresTransbordo by remember { mutableStateOf<List<Coordenada>>(emptyList()) }
+    // Ubicación con el GPS propio de Android (sin Google Play Services, funciona sin internet)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var tienePermisoUbicacion by remember {
+        mutableStateOf(PERMISOS_UBICACION.any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED })
+    }
+    val pedirPermisoUbicacion = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        tienePermisoUbicacion = r.values.any { it }
+    }
+    var ubicacionUsuario by remember { mutableStateOf<Coordenada?>(null) }
 
-    var origenLatLng by remember { mutableStateOf(origenInicial?.toLatLng()) }
-    var destinoLatLng by remember { mutableStateOf(destinoInicial?.toLatLng()) }
+    var origenPunto by remember { mutableStateOf(origenInicial?.toCoordenada()) }
+    var destinoPunto by remember { mutableStateOf(destinoInicial?.toCoordenada()) }
     var mostrarBusqueda by remember {
         mutableStateOf(origenInicial != null && destinoInicial != null)
     }
@@ -397,7 +403,7 @@ fun MapScreen(
     // ── Recalcula tramos cuando rutas llega después de onRutaEncontrada ──────
     LaunchedEffect(rutas, codigosPendientes) {
         if (rutas.isEmpty() || codigosPendientes.isEmpty() ||
-            origenLatLng == null || destinoLatLng == null) {
+            origenPunto == null || destinoPunto == null) {
             coordsRecomendadas = emptyMap()
             tramosGuia = emptyList()
             marcadoresRuta = emptyList()
@@ -417,17 +423,17 @@ fun MapScreen(
         val nextCoordsRecomendadas = mutableMapOf<String, List<Map<String, Double>>>()
         val nextDireccion = direccionPorRuta.toMutableMap()
         val nextMarcadoresRuta = mutableListOf<MarkerRutaGuia>()
-        val nextMarcadoresTransbordo = mutableListOf<LatLng>()
+        val nextMarcadoresTransbordo = mutableListOf<Coordenada>()
 
         if (n == 1) {
             val ruta = rutasRecomendadas[0]
-            val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
+            val coords = elegirDireccion(ruta, origenPunto!!, destinoPunto!!)
             nextCoordsRecomendadas[ruta.codigo.trim()] = coords
             
             val esVuelta = ruta.coordenadasVuelta.isNotEmpty() && coords == ruta.coordenadasVuelta
             nextDireccion[ruta.id] = esVuelta
 
-            val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
+            val segmento = calcularTramo(coords, origenPunto!!, destinoPunto!!)
             if (segmento.isNotEmpty()) {
                 tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                 val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
@@ -435,10 +441,10 @@ fun MapScreen(
             }
         } else if (n >= 2) {
             val coordsList = mutableListOf<List<Map<String, Double>>>()
-            val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
+            val transferPoints = mutableListOf<Pair<Coordenada, Coordenada>>()
 
             // 1. Elegir dirección para la primera ruta
-            val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
+            val coords0 = elegirDireccion(rutasRecomendadas[0], origenPunto!!, destinoPunto!!)
             coordsList.add(coords0)
             nextCoordsRecomendadas[rutasRecomendadas[0].codigo.trim()] = coords0
             
@@ -454,7 +460,7 @@ fun MapScreen(
                 val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
                     encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
                 } else {
-                    Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+                    Triple(Coordenada(0.0, 0.0), Coordenada(0.0, 0.0), Double.MAX_VALUE)
                 }
 
                 val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
@@ -475,8 +481,8 @@ fun MapScreen(
             for (i in 0 until n) {
                 val r = rutasRecomendadas[i]
                 val coords = coordsList[i]
-                val startPt = if (i == 0) origenLatLng!! else transferPoints[i - 1].second
-                val endPt = if (i == n - 1) destinoLatLng!! else transferPoints[i].first
+                val startPt = if (i == 0) origenPunto!! else transferPoints[i - 1].second
+                val endPt = if (i == n - 1) destinoPunto!! else transferPoints[i].first
 
                 val segmento = calcularTramo(coords, startPt, endPt)
                 if (segmento.isNotEmpty()) {
@@ -506,17 +512,12 @@ fun MapScreen(
         guiaActiva = true
     }
 
-    LaunchedEffect(locationPermission.status.isGranted) {
-        if (locationPermission.status.isGranted) {
-            obtenerUbicacion(context) { location ->
-                scope.launch {
-                    cameraPositionState.animate(
-                        CameraUpdateFactory.newLatLngZoom(
-                            LatLng(location.latitude, location.longitude), 15f
-                        )
-                    )
-                }
-            }
+    // Al tener permiso: centra una vez en el usuario y muestra su punto azul mientras la pantalla esté visible
+    LaunchedEffect(tienePermisoUbicacion) {
+        if (!tienePermisoUbicacion) return@LaunchedEffect
+        mapaViewModel.ubicacionActual()?.let { controlCamara.centrar(it, ZOOM_UBICACION_INICIAL) }
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            mapaViewModel.seguirUbicacion().collect { ubicacionUsuario = it }
         }
     }
 
@@ -641,123 +642,76 @@ fun MapScreen(
             when (tabActivo) {
 
                 NavTab.MAPA -> {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        onMapClick = { latLng ->
-                            when (modoSeleccion) {
-                                "origen"  -> { origenLatLng  = latLng; modoSeleccion = null; mostrarBusqueda = true }
-                                "destino" -> { destinoLatLng = latLng; modoSeleccion = null; mostrarBusqueda = true }
-                                else -> { }
-                            }
-                        },
-                        properties = MapProperties(
-                            isMyLocationEnabled = locationPermission.status.isGranted,
-                            mapType = mapType,
-                            latLngBoundsForCameraTarget = com.google.android.gms.maps.model.LatLngBounds(
-                                LatLng(-16.5500, -71.6500),
-                                LatLng(-16.2500, -71.4000)
-                            ),
-                            mapStyleOptions = MapStyleOptions("""
-                                [
-                                  {"featureType":"poi","stylers":[{"visibility":"off"}]},
-                                  {"featureType":"transit","stylers":[{"visibility":"off"}]},
-                                  {"featureType":"road","elementType":"labels","stylers":[{"visibility":"on"}]}
-                                ]
-                            """)
-                        )
-                    ) {
-                        origenLatLng?.let {
-                            Marker(state = MarkerState(position = it), title = "Origen",
-                                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                        }
-                        destinoLatLng?.let {
-                            Marker(state = MarkerState(position = it), title = "Destino",
-                                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                        }
-
-                        // ── Rutas visibles del drawer (IDA o VUELTA según toggle) ──────
-                        rutas.filter { rutasVisibles.contains(it.id) }.forEach { ruta ->
-                            val usarVuelta = (direccionPorRuta[ruta.id] == true) &&
-                                    ruta.coordenadasVuelta.isNotEmpty()
-                            val coordsUsadas = if (usarVuelta) ruta.coordenadasVuelta else ruta.coordenadas
-                            val puntos = coordsUsadas.mapNotNull { coord ->
-                                val lat = coord["lat"] ?: return@mapNotNull null
-                                val lng = coord["lng"] ?: return@mapNotNull null
-                                LatLng(lat, lng)
-                            }
-                            if (puntos.isNotEmpty())
-                                Polyline(points = puntos, color = parseColor(ruta.color), width = 7f)
-                        }
-
-                        // ── Capa 1: rutas resaltadas por IA (contexto, tenue) ─────────────
-                        rutas.filter { ruta ->
-                            rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) }
-                        }.forEach { ruta ->
-                            // Usar el sentido correcto precalculado (o fallback a elegirDireccion si no está)
-                            val coordsUsadas = coordsRecomendadas[ruta.codigo.trim()]
-                                ?: (if (origenLatLng != null && destinoLatLng != null) {
-                                    elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
-                                } else {
-                                    ruta.coordenadas
-                                })
-                            val puntos = coordsUsadas.mapNotNull { coord ->
-                                val lat = coord["lat"] ?: return@mapNotNull null
-                                val lng = coord["lng"] ?: return@mapNotNull null
-                                LatLng(lat, lng)
-                            }
-                            if (puntos.isNotEmpty())
-                                Polyline(points = puntos,
-                                    color = parseColor(ruta.color).copy(alpha = 0.35f), width = 10f)
-                        }
-
-                        // ── Capa 2: guía GPS (tramo exacto, sentido correcto) ─────────────
-                        if (tramosGuia.isNotEmpty() && guiaActiva) {
-                            tramosGuia.forEach { tramo ->
-                                if (!tramo.esCaminata)
-                                    Polyline(points = tramo.puntos, color = Color.White, width = 24f)
-                            }
-                            tramosGuia.forEach { tramo ->
-                                if (!tramo.esCaminata) {
-                                    Polyline(points = tramo.puntos, color = Color(0xFF1565C0), width = 16f)
-                                    Polyline(points = tramo.puntos, color = Color(0xFF42A5F5), width = 7f)
-                                } else {
-                                    Polyline(
-                                        points = tramo.puntos,
-                                        color = Color.DarkGray,
-                                        width = 8f,
-                                        pattern = listOf(com.google.android.gms.maps.model.Dot(), com.google.android.gms.maps.model.Gap(15f))
-                                    )
-                                }
-                            }
-                        }
-
-                        // ── Capa 3: marcadores de ruta y transbordo (badges y combis) ─────
-                        if (guiaActiva) {
-                            val iconCombi = remember(context) { crearBitmapCombiIcon(context) }
-                            
-                            marcadoresRuta.forEach { marcador ->
-                                val iconBadge = remember(context, marcador.codigoCombi, marcador.color) {
-                                    crearBitmapCodigoRuta(context, marcador.codigoCombi, marcador.color)
-                                }
-                                Marker(
-                                    state = MarkerState(position = marcador.posicion),
-                                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
-                                    icon = iconBadge,
-                                    title = "Ruta ${marcador.codigoCombi}"
-                                )
-                            }
-                            
-                            marcadoresTransbordo.forEach { pos ->
-                                Marker(
-                                    state = MarkerState(position = pos),
-                                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
-                                    icon = iconCombi,
-                                    title = "Transbordo"
-                                )
+                    // ── Mapa local (MapLibre + OSM dentro del APK): capas de la app encima ──
+                    val iconosMapa = remember(marcadoresRuta) {
+                        buildMap {
+                            put(IconosMapa.PIN_ORIGEN, crearBitmapPin(context, 0xFF2E7D32.toInt()))
+                            put(IconosMapa.PIN_DESTINO, crearBitmapPin(context, 0xFFC62828.toInt()))
+                            put(IconosMapa.TRANSBORDO, crearBitmapCombiIcon(context))
+                            marcadoresRuta.forEach { m ->
+                                put(IconosMapa.insigniaRuta(m.codigoCombi, m.color), crearBitmapCodigoRuta(context, m.codigoCombi, m.color))
                             }
                         }
                     }
+                    val lineasMapa = remember(rutas, rutasVisibles, direccionPorRuta, rutasResaltadas, coordsRecomendadas,
+                        origenPunto, destinoPunto, tramosGuia, guiaActiva) {
+                        val o = origenPunto
+                        val d = destinoPunto
+                        buildList {
+                            // Rutas visibles del drawer (IDA o VUELTA según el selector)
+                            rutas.filter { rutasVisibles.contains(it.id) }.forEach { ruta ->
+                                val usarVuelta = (direccionPorRuta[ruta.id] == true) && ruta.coordenadasVuelta.isNotEmpty()
+                                val puntos = aCoordenadas(if (usarVuelta) ruta.coordenadasVuelta else ruta.coordenadas)
+                                if (puntos.isNotEmpty()) add(LineaMapa(puntos, parseColor(ruta.color).toArgb(), 2.5f))
+                            }
+                            // Capa 1: rutas recomendadas (contexto, tenue), en el sentido ya calculado
+                            rutas.filter { ruta -> rutasResaltadas.any { it.equals(ruta.codigo, ignoreCase = true) } }
+                                .forEach { ruta ->
+                                    val coordsUsadas = coordsRecomendadas[ruta.codigo.trim()]
+                                        ?: if (o != null && d != null) elegirDireccion(ruta, o, d) else ruta.coordenadas
+                                    val puntos = aCoordenadas(coordsUsadas)
+                                    if (puntos.isNotEmpty()) add(LineaMapa(puntos, parseColor(ruta.color).toArgb(), 3.5f, opacidad = 0.35f))
+                                }
+                            // Capa 2: guía del viaje (borde blanco + azul + centro claro); caminatas punteadas
+                            if (tramosGuia.isNotEmpty() && guiaActiva) {
+                                tramosGuia.filter { !it.esCaminata }.forEach { add(LineaMapa(it.puntos, android.graphics.Color.WHITE, 8f)) }
+                                tramosGuia.forEach { tramo ->
+                                    if (!tramo.esCaminata) {
+                                        add(LineaMapa(tramo.puntos, 0xFF1565C0.toInt(), 5.5f))
+                                        add(LineaMapa(tramo.puntos, 0xFF42A5F5.toInt(), 2.5f))
+                                    } else {
+                                        add(LineaMapa(tramo.puntos, 0xFF555555.toInt(), 3f, punteada = true))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Capa 3: insignias de ruta y transbordos; los pines de origen y destino quedan encima
+                    val marcadoresMapa = buildList {
+                        if (guiaActiva) {
+                            marcadoresTransbordo.forEach { add(MarcadorMapa(it, IconosMapa.TRANSBORDO)) }
+                            marcadoresRuta.forEach { add(MarcadorMapa(it.posicion, IconosMapa.insigniaRuta(it.codigoCombi, it.color))) }
+                        }
+                        origenPunto?.let { add(MarcadorMapa(it, IconosMapa.PIN_ORIGEN, AnclaIcono.ABAJO)) }
+                        destinoPunto?.let { add(MarcadorMapa(it, IconosMapa.PIN_DESTINO, AnclaIcono.ABAJO)) }
+                    }
+                    MapaBase(
+                        modifier = Modifier.fillMaxSize(),
+                        camaraInicial = PosicionCamara(arequipa, ZOOM_CIUDAD),
+                        limites = LIMITES_MAPA,
+                        lineas = lineasMapa,
+                        marcadores = marcadoresMapa,
+                        iconos = iconosMapa,
+                        ubicacionUsuario = ubicacionUsuario,
+                        controlCamara = controlCamara,
+                        onToqueMapa = { punto ->
+                            when (modoSeleccion) {
+                                "origen"  -> { origenPunto  = punto; modoSeleccion = null; mostrarBusqueda = true }
+                                "destino" -> { destinoPunto = punto; modoSeleccion = null; mostrarBusqueda = true }
+                                else -> { }
+                            }
+                        }
+                    )
 
                     // ── Banner modo selección ─────────────────────────────
                     if (modoSeleccion != null) {
@@ -843,18 +797,14 @@ fun MapScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     SmallFloatingActionButton(
                                         onClick = {
-                                            if (locationPermission.status.isGranted) {
-                                                obtenerUbicacion(context) { location ->
-                                                    scope.launch {
-                                                        cameraPositionState.animate(
-                                                            CameraUpdateFactory.newLatLngZoom(
-                                                                LatLng(location.latitude, location.longitude), 16f
-                                                            )
-                                                        )
-                                                    }
+                                            if (tienePermisoUbicacion) {
+                                                scope.launch {
+                                                    val aqui = mapaViewModel.ubicacionActual()
+                                                    if (aqui != null) controlCamara.centrar(aqui, ZOOM_MI_UBICACION)
+                                                    else snackbarHostState.showSnackbar("No se pudo obtener tu ubicación. Revisa que el GPS esté activado.")
                                                 }
                                             } else {
-                                                locationPermission.launchPermissionRequest()
+                                                pedirPermisoUbicacion.launch(PERMISOS_UBICACION)
                                             }
                                         },
                                         containerColor = Color.White,
@@ -862,31 +812,6 @@ fun MapScreen(
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
                                         Icon(Icons.Filled.MyLocation, "Mi ubicación", modifier = Modifier.size(20.dp))
-                                    }
-
-                                    var showMapTypeMenu by remember { mutableStateOf(false) }
-                                    Box {
-                                        SmallFloatingActionButton(
-                                            onClick = { showMapTypeMenu = true },
-                                            containerColor = Color.White,
-                                            contentColor = NavRed,
-                                            shape = RoundedCornerShape(12.dp)
-                                        ) {
-                                            Icon(Icons.Filled.Layers, "Tipo de mapa", modifier = Modifier.size(20.dp))
-                                        }
-                                        DropdownMenu(
-                                            expanded = showMapTypeMenu,
-                                            onDismissRequest = { showMapTypeMenu = false }
-                                        ) {
-                                            DropdownMenuItem(text = { Text("🗺️  Estándar") },
-                                                onClick = { mapType = MapType.NORMAL; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("🛰️  Satélite") },
-                                                onClick = { mapType = MapType.SATELLITE; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("⛰️  Relieve") },
-                                                onClick = { mapType = MapType.TERRAIN; showMapTypeMenu = false })
-                                            DropdownMenuItem(text = { Text("🔀  Híbrido") },
-                                                onClick = { mapType = MapType.HYBRID; showMapTypeMenu = false })
-                                        }
                                     }
 
                                     if (tramosGuia.isNotEmpty()) {
@@ -911,9 +836,9 @@ fun MapScreen(
                     val rutaEtiquetas = remember(rutas) { rutas.associate { it.codigo.trim() to it.etiqueta.trim() } }
                     val rutaCombis = remember(rutas) { rutas.associate { it.codigo.trim() to it.codigoCombi } }
                     // Sentido elegido por elegirDireccion() para cada código recomendado
-                    val rutaSentidos = remember(rutas, codigosPendientes, origenLatLng, destinoLatLng) {
-                        val currentOrigen = origenLatLng
-                        val currentDestino = destinoLatLng
+                    val rutaSentidos = remember(rutas, codigosPendientes, origenPunto, destinoPunto) {
+                        val currentOrigen = origenPunto
+                        val currentDestino = destinoPunto
                         if (currentOrigen == null || currentDestino == null || rutas.isEmpty() || codigosPendientes.isEmpty()) {
                             emptyMap<String, String>()
                         } else {
@@ -945,7 +870,7 @@ fun MapScreen(
                                     val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
                                         encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
                                     } else {
-                                        Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+                                        Triple(Coordenada(0.0, 0.0), Coordenada(0.0, 0.0), Double.MAX_VALUE)
                                     }
 
                                     val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
@@ -975,8 +900,8 @@ fun MapScreen(
                         ) + fadeOut(animationSpec = tween(durationMillis = 200))
                     ) {
                         BusquedaSheet(
-                            origenLatLng        = origenLatLng,
-                            destinoLatLng       = destinoLatLng,
+                            origenPunto        = origenPunto,
+                            destinoPunto       = destinoPunto,
                             onDismiss           = { mostrarBusqueda = false },
                             onSeleccionarOrigen = { mostrarBusqueda = false; modoSeleccion = "origen" },
                             onSeleccionarDestino= { mostrarBusqueda = false; modoSeleccion = "destino" },
@@ -985,7 +910,7 @@ fun MapScreen(
                                 codigosPendientes = codigos
                                 println("DEBUG onRutaEncontrada: codigos=$codigos rutas.size=${rutas.size}")
 
-                                if (origenLatLng != null && destinoLatLng != null) {
+                                if (origenPunto != null && destinoPunto != null) {
                                     val tramos = mutableListOf<TramoGuia>()
                                     val rutasRecomendadas = codigos.mapNotNull { codigo ->
                                         rutas.firstOrNull { it.codigo.equals(codigo, ignoreCase = true) }
@@ -993,12 +918,12 @@ fun MapScreen(
 
                                     val n = rutasRecomendadas.size
                                     val nextMarcadoresRuta = mutableListOf<MarkerRutaGuia>()
-                                    val nextMarcadoresTransbordo = mutableListOf<LatLng>()
+                                    val nextMarcadoresTransbordo = mutableListOf<Coordenada>()
 
                                     if (n == 1) {
                                         val ruta = rutasRecomendadas[0]
-                                        val coords = elegirDireccion(ruta, origenLatLng!!, destinoLatLng!!)
-                                        val segmento = calcularTramo(coords, origenLatLng!!, destinoLatLng!!)
+                                        val coords = elegirDireccion(ruta, origenPunto!!, destinoPunto!!)
+                                        val segmento = calcularTramo(coords, origenPunto!!, destinoPunto!!)
                                         if (segmento.isNotEmpty()) {
                                             tramos.addAll(crearTramos(segmento, parseColor(ruta.color)))
                                             val posBadge = obtenerPuntoMasAdelante(segmento, startIndex = 1, metros = 10.0)
@@ -1006,10 +931,10 @@ fun MapScreen(
                                         }
                                     } else if (n >= 2) {
                                         val coordsList = mutableListOf<List<Map<String, Double>>>()
-                                        val transferPoints = mutableListOf<Pair<LatLng, LatLng>>()
+                                        val transferPoints = mutableListOf<Pair<Coordenada, Coordenada>>()
 
                                         // 1. Elegir dirección para la primera ruta
-                                        val coords0 = elegirDireccion(rutasRecomendadas[0], origenLatLng!!, destinoLatLng!!)
+                                        val coords0 = elegirDireccion(rutasRecomendadas[0], origenPunto!!, destinoPunto!!)
                                         coordsList.add(coords0)
 
                                         // 2. Propagar para encontrar acercamientos de rutas intermedias
@@ -1021,7 +946,7 @@ fun MapScreen(
                                             val (transPrevVuelta, transCurrVuelta, minDistVuelta) = if (rCurrent.coordenadasVuelta.isNotEmpty()) {
                                                 encontrarAcercamiento(prevCoords, rCurrent.coordenadasVuelta)
                                             } else {
-                                                Triple(LatLng(0.0, 0.0), LatLng(0.0, 0.0), Double.MAX_VALUE)
+                                                Triple(Coordenada(0.0, 0.0), Coordenada(0.0, 0.0), Double.MAX_VALUE)
                                             }
 
                                             val (transPrev, transCurr, coordsCurrent) = if (minDistVuelta < minDistIda) {
@@ -1038,8 +963,8 @@ fun MapScreen(
                                         for (i in 0 until n) {
                                             val r = rutasRecomendadas[i]
                                             val coords = coordsList[i]
-                                            val startPt = if (i == 0) origenLatLng!! else transferPoints[i - 1].second
-                                            val endPt = if (i == n - 1) destinoLatLng!! else transferPoints[i].first
+                                            val startPt = if (i == 0) origenPunto!! else transferPoints[i - 1].second
+                                            val endPt = if (i == n - 1) destinoPunto!! else transferPoints[i].first
 
                                             val segmento = calcularTramo(coords, startPt, endPt)
                                             if (segmento.isNotEmpty()) {
@@ -1096,8 +1021,8 @@ fun MapScreen(
                     HistorialScreen(
                         onBack = { tabActivo = NavTab.MAPA },
                         onRepetirBusqueda = { origen, destino, _ ->
-                            origenLatLng    = origen.toLatLng()
-                            destinoLatLng   = destino.toLatLng()
+                            origenPunto    = origen.toCoordenada()
+                            destinoPunto   = destino.toCoordenada()
                             mostrarBusqueda = true
                             tabActivo       = NavTab.MAPA
                         },
@@ -1647,19 +1572,19 @@ fun RutaDetalleSheet(
     }
 }
 
-fun distMetrosAprox(a: com.google.android.gms.maps.model.LatLng, b: com.google.android.gms.maps.model.LatLng): Double {
-    val latMid = (a.latitude + b.latitude) / 2.0 * 0.017453292519943295
-    val dLat = (b.latitude - a.latitude) * 111132.954
-    val dLng = (b.longitude - a.longitude) * 111132.954 * Math.cos(latMid)
+fun distMetrosAprox(a: Coordenada, b: Coordenada): Double {
+    val latMid = (a.lat + b.lat) / 2.0 * 0.017453292519943295
+    val dLat = (b.lat - a.lat) * 111132.954
+    val dLng = (b.lng - a.lng) * 111132.954 * Math.cos(latMid)
     return Math.sqrt(dLat * dLat + dLng * dLng)
 }
 
 fun obtenerPuntoMasAdelante(
-    segmento: List<com.google.android.gms.maps.model.LatLng>,
+    segmento: List<Coordenada>,
     startIndex: Int,
     metros: Double
-): com.google.android.gms.maps.model.LatLng {
-    if (segmento.isEmpty()) return com.google.android.gms.maps.model.LatLng(0.0, 0.0)
+): Coordenada {
+    if (segmento.isEmpty()) return Coordenada(0.0, 0.0)
     if (startIndex >= segmento.lastIndex) return segmento.last()
     
     // Evitar que el marcador pase del penúltimo punto (fin del recorrido en combi)
@@ -1684,7 +1609,7 @@ fun crearBitmapCodigoRuta(
     context: android.content.Context,
     codigo: String,
     colorHex: String
-): com.google.android.gms.maps.model.BitmapDescriptor {
+): android.graphics.Bitmap {
     val scale = context.resources.displayMetrics.density
     val paddingX = (8 * scale).toInt()
     val paddingY = (4 * scale).toInt()
@@ -1733,10 +1658,10 @@ fun crearBitmapCodigoRuta(
     val y = (pillHeight / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f)
     canvas.drawText(codigo, x, y, textPaint)
     
-    return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
+    return bitmap
 }
 
-fun crearBitmapCombiIcon(context: android.content.Context): com.google.android.gms.maps.model.BitmapDescriptor {
+fun crearBitmapCombiIcon(context: android.content.Context): android.graphics.Bitmap {
     val scale = context.resources.displayMetrics.density
     val size = (32 * scale).toInt()
     
@@ -1824,7 +1749,7 @@ fun crearBitmapCombiIcon(context: android.content.Context): com.google.android.g
     )
     canvas.drawRect(grilleRect, grillePaint)
     
-    return com.google.android.gms.maps.model.BitmapDescriptorFactory.fromBitmap(bitmap)
+    return bitmap
 }
 
 // C8 -> "C-8"; ALB, CHI y OTROS se muestran tal cual

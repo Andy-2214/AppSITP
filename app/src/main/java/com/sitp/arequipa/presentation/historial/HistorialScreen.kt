@@ -31,6 +31,7 @@ fun HistorialScreen(
     val favoritos by historialViewModel.favoritos.collectAsState()
     val loading by historialViewModel.loading.collectAsState()
     val favoritoAutoGuardado by historialViewModel.favoritoAutoGuardado.collectAsState()
+    val nombres by historialViewModel.nombres.collectAsState()
     var tabSeleccionado by remember { mutableStateOf(0) }
 
     // Usa el snackbar del Scaffold padre si está disponible, si no crea uno local
@@ -71,11 +72,13 @@ fun HistorialScreen(
             when (tabSeleccionado) {
                 0 -> HistorialTab(
                     historial = historial,
+                    nombres = nombres,
                     onEliminar = { historialViewModel.eliminarBusqueda(it) },
                     onRepetir = onRepetirBusqueda
                 )
                 1 -> FavoritosTab(
                     favoritos = favoritos,
+                    nombres = nombres,
                     onEliminar = { historialViewModel.eliminarFavorito(it) },
                     onRepetir = onRepetirBusqueda
                 )
@@ -87,6 +90,7 @@ fun HistorialScreen(
 @Composable
 fun HistorialTab(
     historial: List<BusquedaHistorial>,
+    nombres: Map<String, String>,
     onEliminar: (String) -> Unit,
     onRepetir: (String, String, String) -> Unit
 ) {
@@ -108,6 +112,7 @@ fun HistorialTab(
         items(historial, key = { it.id }) { busqueda ->
             BusquedaCard(
                 busqueda = busqueda,
+                nombres = nombres,
                 onEliminar = { onEliminar(busqueda.id) },
                 onRepetir = { onRepetir(busqueda.origen, busqueda.destino, busqueda.preferencia) }
             )
@@ -118,6 +123,7 @@ fun HistorialTab(
 @Composable
 fun BusquedaCard(
     busqueda: BusquedaHistorial,
+    nombres: Map<String, String>,
     onEliminar: () -> Unit,
     onRepetir: () -> Unit
 ) {
@@ -139,8 +145,8 @@ fun BusquedaCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("📍 ${busqueda.origen}", style = MaterialTheme.typography.bodyMedium)
-                    Text("🏁 ${busqueda.destino}", style = MaterialTheme.typography.bodyMedium)
+                    Text("📍 ${textoPunto(busqueda.origen, nombres)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("🏁 ${textoPunto(busqueda.destino, nombres)}", style = MaterialTheme.typography.bodyMedium)
                     Text(preferenciaTexto, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     Text(fechaFormateada, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -159,6 +165,7 @@ fun BusquedaCard(
 @Composable
 fun FavoritosTab(
     favoritos: List<RutaFavorita>,
+    nombres: Map<String, String>,
     onEliminar: (String) -> Unit,
     onRepetir: (String, String, String) -> Unit
 ) {
@@ -180,6 +187,7 @@ fun FavoritosTab(
         items(favoritos, key = { it.id }) { favorito ->
             FavoritoCard(
                 favorito = favorito,
+                nombres = nombres,
                 onEliminar = { onEliminar(favorito.id) },
                 onRepetir = { onRepetir(favorito.origen, favorito.destino, "tiempo") }
             )
@@ -190,6 +198,7 @@ fun FavoritosTab(
 @Composable
 fun FavoritoCard(
     favorito: RutaFavorita,
+    nombres: Map<String, String>,
     onEliminar: () -> Unit,
     onRepetir: () -> Unit
 ) {
@@ -209,10 +218,10 @@ fun FavoritoCard(
                         Icon(Icons.Default.Favorite, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(favorito.nombre, style = MaterialTheme.typography.titleSmall)
+                        Text(tituloFavorito(favorito, nombres), style = MaterialTheme.typography.titleSmall)
                     }
-                    Text("📍 ${favorito.origen}", style = MaterialTheme.typography.bodyMedium)
-                    Text("🏁 ${favorito.destino}", style = MaterialTheme.typography.bodyMedium)
+                    Text("📍 ${textoPunto(favorito.origen, nombres)}", style = MaterialTheme.typography.bodyMedium)
+                    Text("🏁 ${textoPunto(favorito.destino, nombres)}", style = MaterialTheme.typography.bodyMedium)
                     Text(
                         "Usado ${favorito.frecuencia} veces · Último: $fechaFormateada",
                         style = MaterialTheme.typography.bodySmall,

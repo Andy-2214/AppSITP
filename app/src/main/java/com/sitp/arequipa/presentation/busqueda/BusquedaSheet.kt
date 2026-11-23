@@ -31,13 +31,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.maps.model.LatLng
 import com.sitp.arequipa.di.provideViewModelFactory
+import com.sitp.arequipa.domain.model.AtribucionDatos
+import com.sitp.arequipa.domain.model.Coordenada
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
 
 private val BusRed      = Color(0xFFC62828)
@@ -115,14 +117,13 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
         val abordarDetalle = mA?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
         val bajarBase      = (if (mB != null) bajar.substring(0, mB.range.first) else bajar).trim().trimEnd(',', '.')
         val bajarDetalle   = mB?.groupValues?.get(1)?.trim()?.trimEnd('.') ?: ""
-        val bajarTexto = when {
-            bajarBase.isEmpty() -> ""
-            bajarBase.startsWith("Bájese", ignoreCase = true) ||
-                    bajarBase.startsWith("Bajese",  ignoreCase = true) ||
-                    bajarBase.startsWith("Baje",    ignoreCase = true) ->
-                bajarBase.replaceFirst("baje ", "Bájese en ", ignoreCase = true)
-                    .replaceFirst("bajese ", "Bájese en ", ignoreCase = true)
-            else -> "Bájese en $bajarBase"
+        // El texto puede traer ya el verbo y/o la preposición ("en el destino", "bajese en Av. X"):
+        // se quitan y se vuelve a poner "Bájese en" una sola vez (evita "Bájese en en el destino").
+        val bajarTexto = if (bajarBase.isEmpty()) "" else {
+            val lugarBajada = bajarBase
+                .replaceFirst(Regex("""^(bájese|bajese|baje)\s+""", RegexOption.IGNORE_CASE), "")
+                .replaceFirst(Regex("""^(en\s+)+""", RegexOption.IGNORE_CASE), "")
+            "Bájese en $lugarBajada"
         }
 
         SegmentoRuta(0, codigo, abordarTexto,
@@ -157,8 +158,8 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
 // ─────────────────────────────────────────────────────────────────────────────
 @Composable
 fun BusquedaSheet(
-    origenLatLng: LatLng?,
-    destinoLatLng: LatLng?,
+    origenPunto: Coordenada?,
+    destinoPunto: Coordenada?,
     onDismiss: () -> Unit,
     onSeleccionarOrigen: () -> Unit,
     onSeleccionarDestino: () -> Unit,
@@ -169,11 +170,19 @@ fun BusquedaSheet(
     rutaEtiquetas: Map<String, String> = emptyMap(),
     rutaCombis: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(factory = provideViewModelFactory()),
-    historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory())
+    historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory()),
+    ubicacionViewModel: UbicacionViewModel = viewModel(factory = provideViewModelFactory())
 ) {
     var preferencia   by remember { mutableStateOf("tiempo") }
     var consultaExtra by remember { mutableStateOf("") }
     val busquedaState by busquedaViewModel.busquedaState.collectAsState()
+
+    // Nombres de calle de los pines y crédito de la fuente de datos (sin saber qué proveedor es)
+    val nombreOrigen by ubicacionViewModel.origen.collectAsState()
+    val nombreDestino by ubicacionViewModel.destino.collectAsState()
+    val atribucionDatos by ubicacionViewModel.atribucion.collectAsState()
+    LaunchedEffect(origenPunto) { ubicacionViewModel.nombrarOrigen(origenPunto?.lat, origenPunto?.lng) }
+    LaunchedEffect(destinoPunto) { ubicacionViewModel.nombrarDestino(destinoPunto?.lat, destinoPunto?.lng) }
 
     // ── Nuevo estado: panel minimizado ────────────────────────────────────
     var minimizado by remember { mutableStateOf(false) }
@@ -183,10 +192,11 @@ fun BusquedaSheet(
         if (busquedaState is BusquedaState.Success && !yaGuardado) {
             yaGuardado = true
             val r = (busquedaState as BusquedaState.Success).respuesta
-            if (origenLatLng != null && destinoLatLng != null) {
+            if (origenPunto != null && destinoPunto != null) {
                 historialViewModel.guardarBusqueda(
-                    origen      = "${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}",
-                    destino     = "${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}",
+                    // Se guardan coordenadas (no nombres): "Repetir búsqueda" y los favoritos las vuelven a leer
+                    origen      = origenPunto.comoTexto(),
+                    destino     = destinoPunto.comoTexto(),
                     preferencia = preferencia,
                     respuestaIA = r
                 )
@@ -196,7 +206,7 @@ fun BusquedaSheet(
     }
 
     var primeraVez by remember { mutableStateOf(true) }
-    LaunchedEffect(origenLatLng, destinoLatLng) {
+    LaunchedEffect(origenPunto, destinoPunto) {
         if (primeraVez) primeraVez = false else busquedaViewModel.resetState()
     }
 
@@ -351,9 +361,9 @@ fun BusquedaSheet(
                                     Column {
                                         Text("ORIGEN", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
                                         Text(
-                                            if (origenLatLng != null) "${String.format("%.4f", origenLatLng.latitude)}, ${String.format("%.4f", origenLatLng.longitude)}"
+                                            if (origenPunto != null) textoPunto(origenPunto, nombreOrigen)
                                             else "Toca para marcar origen",
-                                            fontSize = 14.sp, color = if (origenLatLng != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                                            fontSize = 14.sp, color = if (origenPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
@@ -370,9 +380,9 @@ fun BusquedaSheet(
                                     Column {
                                         Text("DESTINO", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
                                         Text(
-                                            if (destinoLatLng != null) "${String.format("%.4f", destinoLatLng.latitude)}, ${String.format("%.4f", destinoLatLng.longitude)}"
+                                            if (destinoPunto != null) textoPunto(destinoPunto, nombreDestino)
                                             else "Toca para marcar destino",
-                                            fontSize = 14.sp, color = if (destinoLatLng != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                                            fontSize = 14.sp, color = if (destinoPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
@@ -411,6 +421,7 @@ fun BusquedaSheet(
                         }
                         is BusquedaState.Success -> {
                             ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas, rutaCombis)
+                            atribucionDatos?.let { CreditoFuenteDatos(it) }
                         }
                         is BusquedaState.Error -> {
                             Text(state.mensaje, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
@@ -428,17 +439,17 @@ fun BusquedaSheet(
                         else -> {
                             Button(
                                 onClick = {
-                                    if (origenLatLng != null && destinoLatLng != null) {
+                                    if (origenPunto != null && destinoPunto != null) {
                                         busquedaViewModel.buscarRutaPorCoordenadas(
-                                            origenLat = origenLatLng.latitude, origenLng = origenLatLng.longitude,
-                                            destinoLat = destinoLatLng.latitude, destinoLng = destinoLatLng.longitude,
+                                            origenLat = origenPunto.lat, origenLng = origenPunto.lng,
+                                            destinoLat = destinoPunto.lat, destinoLng = destinoPunto.lng,
                                             preferencia = preferencia, consultaExtra = consultaExtra
                                         )
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = BusRed),
-                                enabled = origenLatLng != null && destinoLatLng != null
+                                enabled = origenPunto != null && destinoPunto != null
                             ) { Text("Buscar ruta óptima", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
                         }
                     }
@@ -446,6 +457,28 @@ fun BusquedaSheet(
             }
         }
     }
+}
+
+// ── Nombre del pin ───────────────────────────────────────────────────────────
+/** Nombre de calle del pin si ya se calculó para estas coordenadas; mientras tanto, las coordenadas. */
+private fun textoPunto(punto: Coordenada, nombre: UbicacionViewModel.NombrePunto?): String =
+    nombre?.takeIf { it.lat == punto.lat && it.lng == punto.lng }?.nombre
+        ?: punto.comoTexto()
+
+// ── Crédito de la fuente de los nombres de calles (lo exige su licencia, ver ADR-002) ──
+@Composable
+private fun CreditoFuenteDatos(atribucion: AtribucionDatos) {
+    val uriHandler = LocalUriHandler.current
+    val enlace = atribucion.enlace
+    Text(
+        text = "Nombres de calles: ${atribucion.texto}",
+        color = BusGray,
+        fontSize = 11.sp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (enlace != null) Modifier.clickable { uriHandler.openUri(enlace) } else Modifier)
+            .padding(vertical = 4.dp)
+    )
 }
 
 // ── Timeline de resultados ────────────────────────────────────────────────────

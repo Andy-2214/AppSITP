@@ -68,13 +68,13 @@ class BusquedaViewModel(
                                     .replace("Punto de destino", destinoNombre)
                                 _busquedaState.value = BusquedaState.Success(respuestaFinal)
                             } catch (e: Exception) {
-                                println("DEBUG BusquedaViewModel: geocoding en segundo plano falló: ${e.message}")
+                                println("DEBUG BusquedaViewModel: no se pudieron obtener los nombres de lugares: ${e.message}")
                             }
                         }
                     }
 
                     is ResultadoBusqueda.NecesitaIA -> {
-                        // Geocodificar en paralelo antes de llamar a Groq
+                        // Obtener los nombres de origen y destino en paralelo antes de llamar a Groq
                         val origenDeferred = async { recomendarRutaIAUseCase.obtenerNombreOrigen(origenLat, origenLng) }
                         val destinoDeferred = async { recomendarRutaIAUseCase.obtenerNombreDestino(destinoLat, destinoLng) }
                         val origenNombre = origenDeferred.await()

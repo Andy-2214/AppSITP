@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
 }
 
+// Room exporta aquí el esquema de CatalogoDatabase; scripts/catalogo/construir_catalogo.py
+// lo usa para generar assets/catalogo.db con exactamente la misma estructura (ADR-001).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.sitp.arequipa"
     compileSdk {
@@ -25,8 +31,7 @@ android {
         versionName = "1.0"
         buildConfigField("String", "GROQ_API_KEY", "\"${project.findProperty("GROQ_API_KEY")}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${project.findProperty("GOOGLE_MAPS_API_KEY")}\"")
-        manifestPlaceholders["googleMapsApiKey"] = project.findProperty("GOOGLE_MAPS_API_KEY") ?: ""
+        // El mapa es local (MapLibre + assets/mapa, ADR-004): ya no hay clave de mapas.
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -34,6 +39,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Solo en debug: también x86_64, para probar el mapa (librería nativa) en el emulador
+            ndk { abiFilters += listOf("x86_64") }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -50,6 +59,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    androidResources {
+        // El mapa (.pmtiles) se lee por rangos de bytes: debe ir sin comprimir dentro del APK
+        noCompress += listOf("pmtiles")
     }
 }
 
@@ -72,12 +85,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("com.google.maps.android:maps-compose:4.3.3")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    // Mapa local sin conexión (ADR-004). La ubicación usa el GPS propio de Android (LocationManager).
+    implementation(libs.maplibre.android)
 
     implementation("androidx.compose.material3:material3:1.2.0")
-    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
-    implementation("com.google.android.gms:play-services-location:21.2.0")
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

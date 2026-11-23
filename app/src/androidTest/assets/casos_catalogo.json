@@ -1,0 +1,2303 @@
+{
+ "catalogo_bytes": 5087232,
+ "casos": [
+  {
+   "grupo": "urbano",
+   "lat": -16.4250795,
+   "lng": -71.5567581,
+   "esperado": "Avenida Alfonso Ugarte, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3745514,
+   "lng": -71.533432,
+   "esperado": "Avenida Chilina, Yanahuara"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3456642,
+   "lng": -71.5492517,
+   "esperado": "Jirón Zoraida Morales Revilla, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4510339,
+   "lng": -71.5491233,
+   "esperado": "Calle Huáscar, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.395559,
+   "lng": -71.4976981,
+   "esperado": "Avenida El Sol, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4463435,
+   "lng": -71.5482093,
+   "esperado": "Avenida Los Bosques, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3745973,
+   "lng": -71.5554049,
+   "esperado": "cerca de Metro, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.372852,
+   "lng": -71.5608991,
+   "esperado": "Avenida Alfonso Ugarte, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3488803,
+   "lng": -71.5950178,
+   "esperado": "Avenida Buenos Aires, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3225888,
+   "lng": -71.5681012,
+   "esperado": "Avenida Los Quechuas, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4123329,
+   "lng": -71.535955,
+   "esperado": "Avenida Venezuela, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4221818,
+   "lng": -71.485648,
+   "esperado": "cerca de Pedro Vilcapaza, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4415539,
+   "lng": -71.4845292,
+   "esperado": "cerca de C', Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3652335,
+   "lng": -71.6375055,
+   "esperado": "cerca de 154, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3000789,
+   "lng": -71.6216195,
+   "esperado": "Vía Interoceánica Sur - Tramo 5, Yura"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4512769,
+   "lng": -71.5126774,
+   "esperado": "Avenida las Esmeraldas, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4603469,
+   "lng": -71.5268288,
+   "esperado": "cerca de Parque Colibrí de La Campiña, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4120114,
+   "lng": -71.500289,
+   "esperado": "Calle José Santos Chocano, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3503413,
+   "lng": -71.5793198,
+   "esperado": "cerca de B, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3118195,
+   "lng": -71.6173529,
+   "esperado": "cerca de Comite 30, zona 1, Yura"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3203325,
+   "lng": -71.5913412,
+   "esperado": "Avenida Municipal, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3337044,
+   "lng": -71.6032605,
+   "esperado": "cerca de Institución Educativa Señor De La Caña, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3383946,
+   "lng": -71.5477593,
+   "esperado": "Avenida Sol de Oro, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3098861,
+   "lng": -71.60762,
+   "esperado": "cerca de Camineros Obreros, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.42325,
+   "lng": -71.5109354,
+   "esperado": "Calle Comandante Horacio Patiño, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.344951,
+   "lng": -71.6282262,
+   "esperado": "cerca de H, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4019191,
+   "lng": -71.5856209,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3934521,
+   "lng": -71.5356657,
+   "esperado": "Juan del la Torre, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4214052,
+   "lng": -71.4981699,
+   "esperado": "César Vallejo, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4473142,
+   "lng": -71.5151477,
+   "esperado": "Calle César Vallejo, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4057204,
+   "lng": -71.5139453,
+   "esperado": "Avenida Simón Bolívar, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4330584,
+   "lng": -71.5330326,
+   "esperado": "Garcilazo de la Vega, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3737647,
+   "lng": -71.5209414,
+   "esperado": "Avenida Las Torres, Alto Selva Alegre"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4209075,
+   "lng": -71.5021501,
+   "esperado": "Alfonso Prado, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3241846,
+   "lng": -71.5739517,
+   "esperado": "Calle Ciro Alegría, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3240874,
+   "lng": -71.5556594,
+   "esperado": "Avenida Benigno Ballón Farfán, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4027267,
+   "lng": -71.5528252,
+   "esperado": "Avenida Metropolitana, Yanahuara"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3265636,
+   "lng": -71.559031,
+   "esperado": "cerca de Hospital Maritza Campos Díaz, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3939461,
+   "lng": -71.5480572,
+   "esperado": "Avenida Zamacola, Yanahuara"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3355858,
+   "lng": -71.6044248,
+   "esperado": "cerca de Institución Educativa Señor De La Caña, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4041146,
+   "lng": -71.5795156,
+   "esperado": "Jirón Leoncio Prado, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4021912,
+   "lng": -71.5332794,
+   "esperado": "Calle Deán Valdivia, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3436085,
+   "lng": -71.5115747,
+   "esperado": "cerca de Institución educativa inicial Los Enanitos, Alto Selva Alegre"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3313813,
+   "lng": -71.5518745,
+   "esperado": "cerca de Asociación Bosques del Getzemani, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3838713,
+   "lng": -71.521577,
+   "esperado": "Calle Alianza, Alto Selva Alegre"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3951347,
+   "lng": -71.534899,
+   "esperado": "Calle San Francisco, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4232934,
+   "lng": -71.5423752,
+   "esperado": "Andrés Avelino Cáceres, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4483622,
+   "lng": -71.535904,
+   "esperado": "Calle Nicolás de Piérola, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.352272,
+   "lng": -71.5414367,
+   "esperado": "Avenida Ramón Castilla, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3433535,
+   "lng": -71.5506242,
+   "esperado": "cerca de César Vallejo, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4546669,
+   "lng": -71.5526768,
+   "esperado": "Avenida José María Arguedas, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4046278,
+   "lng": -71.4760483,
+   "esperado": "Avenida Pacífico, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4202072,
+   "lng": -71.5200486,
+   "esperado": "cerca de La Castro, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3507601,
+   "lng": -71.5475762,
+   "esperado": "Calle Convención, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3542751,
+   "lng": -71.5389255,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4181079,
+   "lng": -71.5329938,
+   "esperado": "Avenida Daniel Alcides Carrión, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4427795,
+   "lng": -71.4830096,
+   "esperado": "cerca de Institución Educativa No. 40195, Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.472424,
+   "lng": -71.5152307,
+   "esperado": "Sub Estación, Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4490745,
+   "lng": -71.5904939,
+   "esperado": "Avenida Arequipa, Tiabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4437534,
+   "lng": -71.4963349,
+   "esperado": "cerca de Institución Educativa The Koritos, Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3359576,
+   "lng": -71.5884216,
+   "esperado": "cerca de Institución Educativa Percy Gibson Moller, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4263525,
+   "lng": -71.5374614,
+   "esperado": "Reino Unido, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3986658,
+   "lng": -71.5057119,
+   "esperado": "Calle Revolución Peruana, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4007219,
+   "lng": -71.4895793,
+   "esperado": "cerca de Jerusalen, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3828212,
+   "lng": -71.5499441,
+   "esperado": "Calle Los Arces, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3574479,
+   "lng": -71.5431897,
+   "esperado": "Calle General Varela, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4257301,
+   "lng": -71.5264966,
+   "esperado": "Andrés Avelino Cáceres, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4338048,
+   "lng": -71.503027,
+   "esperado": "Calle Alfonso Ugarte, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.39869,
+   "lng": -71.5250191,
+   "esperado": "Fernando Dávila, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4298974,
+   "lng": -71.476435,
+   "esperado": "cerca de El Cebollar, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3737517,
+   "lng": -71.5579115,
+   "esperado": "cerca de Tranick, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3111423,
+   "lng": -71.6088946,
+   "esperado": "cerca de Camineros Obreros, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3993564,
+   "lng": -71.5167131,
+   "esperado": "Calle Teniente Palacios, Miraflores"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3263878,
+   "lng": -71.5779874,
+   "esperado": "Avenida Vía 54, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3573501,
+   "lng": -71.6356158,
+   "esperado": "cerca de 165, Yura"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4010497,
+   "lng": -71.5380537,
+   "esperado": "Calle Consuelo, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3267285,
+   "lng": -71.549993,
+   "esperado": "Auxiliar Avenida 54, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4218163,
+   "lng": -71.5104398,
+   "esperado": "Calle Independencia, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4446488,
+   "lng": -71.4929159,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4453486,
+   "lng": -71.5257047,
+   "esperado": "Sanchez Carrión, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3511284,
+   "lng": -71.5432725,
+   "esperado": "Calle Tacna, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3988422,
+   "lng": -71.5402414,
+   "esperado": "Pasaje Ibáñez, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3555581,
+   "lng": -71.6297945,
+   "esperado": "cerca de 112, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4664083,
+   "lng": -71.5542026,
+   "esperado": "cerca de I, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3142671,
+   "lng": -71.5514579,
+   "esperado": "Calle № 14, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3419233,
+   "lng": -71.5450128,
+   "esperado": "Avenida San Martín, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4141714,
+   "lng": -71.4819288,
+   "esperado": "Avenida Amazonas, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4185668,
+   "lng": -71.5356835,
+   "esperado": "Avenida Pedro P. Díaz, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4281941,
+   "lng": -71.5124536,
+   "esperado": "cerca de Parque de las Terrazas, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3330398,
+   "lng": -71.6033711,
+   "esperado": "cerca de 5E, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3304847,
+   "lng": -71.5530092,
+   "esperado": "cerca de Cancha de toros El Qorilazo, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4405523,
+   "lng": -71.5854497,
+   "esperado": "Calle Perales, Tiabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4000533,
+   "lng": -71.506368,
+   "esperado": "Calle Amazonas, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4480776,
+   "lng": -71.6192211,
+   "esperado": "cerca de Municipalidad de Uchumayo, Uchumayo"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3216383,
+   "lng": -71.5694446,
+   "esperado": "cerca de R, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4502257,
+   "lng": -71.5248626,
+   "esperado": "Las Américas, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3468477,
+   "lng": -71.619149,
+   "esperado": "cerca de Institución Educativa Sor Ana - B, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4508821,
+   "lng": -71.5496344,
+   "esperado": "Calle Huáscar, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4504868,
+   "lng": -71.5568481,
+   "esperado": "Calle Ayavari, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3718361,
+   "lng": -71.5579118,
+   "esperado": "cerca de La Fonda, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4457178,
+   "lng": -71.5226851,
+   "esperado": "Calle Francisco de Luna Pizarro, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.351151,
+   "lng": -71.5565909,
+   "esperado": "cerca de Institución Educativa Anglicano San Lucas, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.325107,
+   "lng": -71.5865665,
+   "esperado": "cerca de A, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4456824,
+   "lng": -71.5273075,
+   "esperado": "Calle Juan Pablo Vizcardo y Guzmán, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3700948,
+   "lng": -71.5558962,
+   "esperado": "cerca de Parque Los Alamos, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4368044,
+   "lng": -71.5191176,
+   "esperado": "cerca de Los Huertos, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3843891,
+   "lng": -71.5477468,
+   "esperado": "Santa Cruz, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4379347,
+   "lng": -71.5606383,
+   "esperado": "Avenida Las Américas, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.410783,
+   "lng": -71.4684549,
+   "esperado": "Calle Olímpica, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3745518,
+   "lng": -71.5006742,
+   "esperado": "Jirón San Lazaro, Miraflores"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4138751,
+   "lng": -71.5130686,
+   "esperado": "Calle César Vallejo, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.355562,
+   "lng": -71.5461488,
+   "esperado": "Calle Simón Bolívar, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4175647,
+   "lng": -71.4824915,
+   "esperado": "Sinai, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3603307,
+   "lng": -71.6258344,
+   "esperado": "cerca de 29, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3334149,
+   "lng": -71.5857759,
+   "esperado": "cerca de Nueva Esperanza, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4218898,
+   "lng": -71.5357292,
+   "esperado": "cerca de Mercado metropolitano de productores mayoristas Andrés Avenlino Cáceres, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.342911,
+   "lng": -71.6116808,
+   "esperado": "cerca de Institución Educativa John Keynes, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4019946,
+   "lng": -71.5069585,
+   "esperado": "Avenida Simón Bolívar, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3458505,
+   "lng": -71.5428432,
+   "esperado": "Avenida Aviacion, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4038678,
+   "lng": -71.491423,
+   "esperado": "Avenida Argentina, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4000022,
+   "lng": -71.5299139,
+   "esperado": "Siglo XX, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4320318,
+   "lng": -71.6005186,
+   "esperado": "Víctor Andrés Belaunde, Tiabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4146265,
+   "lng": -71.4819892,
+   "esperado": "Avenida Los Incas, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3347158,
+   "lng": -71.5866587,
+   "esperado": "cerca de Villa San Juan, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4330494,
+   "lng": -71.5824616,
+   "esperado": "cerca de Pampatay, Sachaca"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3291898,
+   "lng": -71.5844418,
+   "esperado": "cerca de Institución Educativa 40688 Jesucristo El Salvador, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.360028,
+   "lng": -71.5481179,
+   "esperado": "Mirador, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4592867,
+   "lng": -71.5199256,
+   "esperado": "Geranios, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3848502,
+   "lng": -71.5098386,
+   "esperado": "Jirón Manco Capac, Miraflores"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4560681,
+   "lng": -71.536926,
+   "esperado": "C.Arias Aragüez, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3196232,
+   "lng": -71.5441253,
+   "esperado": "cerca de Asociación Prolongación Habitacional Chachani, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3758443,
+   "lng": -71.5028341,
+   "esperado": "Junín, Miraflores"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.46557,
+   "lng": -71.5300112,
+   "esperado": "cerca de Monumento Entrada de CCapo Socabaya, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.46143,
+   "lng": -71.5262942,
+   "esperado": "Avenida el Bosque, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3084522,
+   "lng": -71.548071,
+   "esperado": "Avenida Los Ángeles del Sur, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3961254,
+   "lng": -71.4879195,
+   "esperado": "Jirón Santa María, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3448275,
+   "lng": -71.5469949,
+   "esperado": "Jirón Inca Garcilazo de la Vega, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3859128,
+   "lng": -71.5790115,
+   "esperado": "cerca de Institución Educativa No. 40141, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3451922,
+   "lng": -71.6186185,
+   "esperado": "cerca de Institución Educativa Sor Ana - B, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3266056,
+   "lng": -71.5550292,
+   "esperado": "Avenida Nuevo Horizonte, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4483892,
+   "lng": -71.495456,
+   "esperado": "Carretera Buena Vista, Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3162137,
+   "lng": -71.5436864,
+   "esperado": "cerca de Chachani 1, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.364461,
+   "lng": -71.6192048,
+   "esperado": "cerca de IE Virgen de las Maravillas, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.394322,
+   "lng": -71.5337652,
+   "esperado": "Desagüadero, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4542831,
+   "lng": -71.5548599,
+   "esperado": "Velazco Alvarado, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3670719,
+   "lng": -71.5332559,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4112337,
+   "lng": -71.5261971,
+   "esperado": "Nicolás SIlva, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4406335,
+   "lng": -71.6028632,
+   "esperado": "Santiago Ortega, Tiabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4003742,
+   "lng": -71.5269658,
+   "esperado": "Avenida Goyeneche, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4352778,
+   "lng": -71.529289,
+   "esperado": "Calle Moquegua, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4101842,
+   "lng": -71.5184342,
+   "esperado": "Avenida los Incas, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4047094,
+   "lng": -71.5356109,
+   "esperado": "Calle 2 de Mayo, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4173043,
+   "lng": -71.5284537,
+   "esperado": "Los Conquistadores, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3347248,
+   "lng": -71.5854078,
+   "esperado": "cerca de Institución Educativa 40671 Villa San Juan, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3200355,
+   "lng": -71.5671157,
+   "esperado": "Avenida Los Quechuas, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4371099,
+   "lng": -71.5613328,
+   "esperado": "Avenida Las Américas, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3373928,
+   "lng": -71.607503,
+   "esperado": "cerca de José Luis Bustamante y Rivero, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4334409,
+   "lng": -71.5378511,
+   "esperado": "Carrión, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4100496,
+   "lng": -71.5196836,
+   "esperado": "Aparcamiento Nivel -1, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.399386,
+   "lng": -71.5330577,
+   "esperado": "Calle Peral, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.394885,
+   "lng": -71.5690385,
+   "esperado": "Prolongación Progreso, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3385753,
+   "lng": -71.6092694,
+   "esperado": "cerca de Institución Educativa Las Plumas Del Amauta, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3284228,
+   "lng": -71.5944083,
+   "esperado": "Vía Interoceánica Sur - Tramo 5, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4525922,
+   "lng": -71.553212,
+   "esperado": "Calle 27 de Noviembre, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3214505,
+   "lng": -71.5887055,
+   "esperado": "cerca de I, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4223149,
+   "lng": -71.5324566,
+   "esperado": "Avenida Daniel Alcides Carrión, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4164337,
+   "lng": -71.4784305,
+   "esperado": "Prolongación Avenida Jesús, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3312134,
+   "lng": -71.5734819,
+   "esperado": "cerca de Andrés Avelino Cáceres, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3630313,
+   "lng": -71.6174422,
+   "esperado": "cerca de Virgen de Copacabana 2, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4454706,
+   "lng": -71.4836825,
+   "esperado": "Carretera Buena Vista, Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3852688,
+   "lng": -71.506219,
+   "esperado": "cerca de Señor de Coyllorite, Miraflores"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4011668,
+   "lng": -71.5261621,
+   "esperado": "Los Ruiseñores, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4122481,
+   "lng": -71.5425687,
+   "esperado": "Avenida Tacna y Arica, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.428786,
+   "lng": -71.5240791,
+   "esperado": "Avenida Dolores, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3960382,
+   "lng": -71.5361865,
+   "esperado": "Calle Ugarte, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3350787,
+   "lng": -71.5852003,
+   "esperado": "cerca de Institución Educativa 40671 Villa San Juan, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4011164,
+   "lng": -71.5353638,
+   "esperado": "Calle Deán Valdivia, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4208956,
+   "lng": -71.5083321,
+   "esperado": "Avenida John F. Kennedy, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3508115,
+   "lng": -71.6308584,
+   "esperado": "Avenida Apipa, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3983643,
+   "lng": -71.5797724,
+   "esperado": "Jirón Libertad, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3575522,
+   "lng": -71.5422854,
+   "esperado": "Calle José María Arguedas, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3397073,
+   "lng": -71.5444549,
+   "esperado": "Garcilazo de la Vega, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4488723,
+   "lng": -71.5498513,
+   "esperado": "Calle Francisco Bolognesi, Jacobo Hunter"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4030579,
+   "lng": -71.5026235,
+   "esperado": "Calle Madre de Dios, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3281645,
+   "lng": -71.5761292,
+   "esperado": "Calle Ricardo Palma, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4031822,
+   "lng": -71.5305783,
+   "esperado": "Rosales, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.357258,
+   "lng": -71.632486,
+   "esperado": "cerca de 122, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4131005,
+   "lng": -71.5023246,
+   "esperado": "Carlos Salaverry, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3471984,
+   "lng": -71.5504234,
+   "esperado": "Jirón Ucayali, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3482428,
+   "lng": -71.6197351,
+   "esperado": "cerca de 7C, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3682605,
+   "lng": -71.5070174,
+   "esperado": "Calle Juan Velasco Alvarado, Alto Selva Alegre"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3963313,
+   "lng": -71.500701,
+   "esperado": "Calle Tupac Amaru, Mariano Melgar"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4231123,
+   "lng": -71.5549612,
+   "esperado": "Avenida Alfonso Ugarte, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4341264,
+   "lng": -71.5132776,
+   "esperado": "Alas del Sur, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3170991,
+   "lng": -71.5837444,
+   "esperado": "cerca de Sor Ana de los Ángeles y Monteagudo Zona A, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4007511,
+   "lng": -71.5329927,
+   "esperado": "Calle Santo Domingo, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4005319,
+   "lng": -71.5497542,
+   "esperado": "Juana Espinoza, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3396635,
+   "lng": -71.5522667,
+   "esperado": "Avenida Sol de Oro, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3287934,
+   "lng": -71.5794014,
+   "esperado": "Avenida Marcial Barriga, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3045878,
+   "lng": -71.5477135,
+   "esperado": "cerca de LUZ DEL SOL, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4121039,
+   "lng": -71.522244,
+   "esperado": "Avenida los Incas, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.322214,
+   "lng": -71.569602,
+   "esperado": "cerca de Goyeneche, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4586884,
+   "lng": -71.4869402,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4136725,
+   "lng": -71.4804159,
+   "esperado": "Calle Ica, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4077173,
+   "lng": -71.5435636,
+   "esperado": "Avenida Lima, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3263186,
+   "lng": -71.574765,
+   "esperado": "Zeballos, Cerro Colorado"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4305972,
+   "lng": -71.5011821,
+   "esperado": "cerca de Institución Educativa Agueda Vignes, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.461586,
+   "lng": -71.5243989,
+   "esperado": "Avenida los Jardines, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4463112,
+   "lng": -71.5338516,
+   "esperado": "Calle Sullana, Socabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4094021,
+   "lng": -71.5216151,
+   "esperado": "Monterreal Isla, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4257085,
+   "lng": -71.492181,
+   "esperado": "Avenida Huancavelica, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3252443,
+   "lng": -71.5409098,
+   "esperado": "cerca de TransCayma S.A.C., Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4156002,
+   "lng": -71.5105036,
+   "esperado": "Calle Mariano Gonzales Prada, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3950908,
+   "lng": -71.5414557,
+   "esperado": "Calle La Recoleta, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4486024,
+   "lng": -71.5888948,
+   "esperado": "Calle Perales, Tiabaya"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4183296,
+   "lng": -71.4863586,
+   "esperado": "Prolongación Avenida Jesús, Paucarpata"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3965426,
+   "lng": -71.5366481,
+   "esperado": "Calle Santa Catalina, Arequipa"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.3379335,
+   "lng": -71.5452032,
+   "esperado": "Garcilazo de la Vega, Cayma"
+  },
+  {
+   "grupo": "urbano",
+   "lat": -16.4618526,
+   "lng": -71.5225513,
+   "esperado": "Avenida Primavera, Socabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.445286,
+   "lng": -71.6165214,
+   "esperado": "cerca de Institución Educativa Inicial Édgar Morín, Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3024516,
+   "lng": -71.4527601,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4816435,
+   "lng": -71.5982024,
+   "esperado": "Tiabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.311556,
+   "lng": -71.4508323,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4054807,
+   "lng": -71.5681211,
+   "esperado": "cerca de Urbanizacion Fatima, Sachaca"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4965999,
+   "lng": -71.5137548,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4727344,
+   "lng": -71.5486857,
+   "esperado": "Socabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4738726,
+   "lng": -71.5380718,
+   "esperado": "Socabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4041531,
+   "lng": -71.5367164,
+   "esperado": "Calle San Juan de Dios, Arequipa"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3458301,
+   "lng": -71.5950361,
+   "esperado": "Avenida Argentina, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3277623,
+   "lng": -71.5427399,
+   "esperado": "cerca de Deán Valdivia Sector 7, Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3970448,
+   "lng": -71.4582598,
+   "esperado": "Mariano Melgar"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4483327,
+   "lng": -71.420674,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4337595,
+   "lng": -71.5123432,
+   "esperado": "cerca de Urbanización Alas del Sur, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4013994,
+   "lng": -71.6235217,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3987121,
+   "lng": -71.4248599,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3596767,
+   "lng": -71.6284984,
+   "esperado": "cerca de 55, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3405046,
+   "lng": -71.5023243,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5065629,
+   "lng": -71.5000055,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5124048,
+   "lng": -71.4705173,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.312986,
+   "lng": -71.6170433,
+   "esperado": "cerca de Comite 30, zona 1, Yura"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4611371,
+   "lng": -71.5303234,
+   "esperado": "Socabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4415368,
+   "lng": -71.5502494,
+   "esperado": "cerca de Institución educativa inicial Childen's World, Jacobo Hunter"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4789541,
+   "lng": -71.6471257,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4791605,
+   "lng": -71.6230644,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3789305,
+   "lng": -71.5424618,
+   "esperado": "Calle Los Serranos, Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3998645,
+   "lng": -71.6530377,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.471394,
+   "lng": -71.5726024,
+   "esperado": "Jacobo Hunter"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4005959,
+   "lng": -71.5482464,
+   "esperado": "Calle Benigno Ballón Farfán, Arequipa"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3556276,
+   "lng": -71.6227957,
+   "esperado": "cerca de 29, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4486093,
+   "lng": -71.4884439,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5111399,
+   "lng": -71.6581845,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4991757,
+   "lng": -71.5193576,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3649787,
+   "lng": -71.4647706,
+   "esperado": "Mariano Melgar"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4634099,
+   "lng": -71.4783783,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4839617,
+   "lng": -71.6140815,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.34038,
+   "lng": -71.5585184,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.424711,
+   "lng": -71.4600548,
+   "esperado": "Paucarpata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4824528,
+   "lng": -71.6060833,
+   "esperado": "Tiabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.307056,
+   "lng": -71.6089487,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4851271,
+   "lng": -71.4219528,
+   "esperado": "Characato"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4271659,
+   "lng": -71.5584374,
+   "esperado": "Avenida Alfonso Ugarte, Arequipa"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3316431,
+   "lng": -71.4907898,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3069453,
+   "lng": -71.5089569,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4230951,
+   "lng": -71.432497,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3865461,
+   "lng": -71.6379767,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3226745,
+   "lng": -71.4826274,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4945124,
+   "lng": -71.6410835,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3627426,
+   "lng": -71.5106755,
+   "esperado": "Jirón Peru, Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4852254,
+   "lng": -71.6186908,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3789568,
+   "lng": -71.6145682,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3114394,
+   "lng": -71.4240709,
+   "esperado": "Miraflores"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5132896,
+   "lng": -71.4269615,
+   "esperado": "Pocsi"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3773976,
+   "lng": -71.4407192,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3463208,
+   "lng": -71.591092,
+   "esperado": "cerca de A, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4396501,
+   "lng": -71.6577148,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4053762,
+   "lng": -71.4471832,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3350969,
+   "lng": -71.5428389,
+   "esperado": "Garcilazo de la Vega, Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4896516,
+   "lng": -71.4696004,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3968777,
+   "lng": -71.4272789,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4196763,
+   "lng": -71.5139501,
+   "esperado": "Calle Alfonso Ugarte, Paucarpata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3895317,
+   "lng": -71.436625,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3725953,
+   "lng": -71.5816996,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4639315,
+   "lng": -71.496313,
+   "esperado": "Alameda Norte, Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4185826,
+   "lng": -71.5769739,
+   "esperado": "Sachaca"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3382904,
+   "lng": -71.5339047,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4033315,
+   "lng": -71.6364053,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4592545,
+   "lng": -71.6510647,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3901541,
+   "lng": -71.6431399,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3170365,
+   "lng": -71.5245493,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4350285,
+   "lng": -71.5050874,
+   "esperado": "Paucarpata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3935052,
+   "lng": -71.5503286,
+   "esperado": "Calle Señor de la Caña, Yanahuara"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4147013,
+   "lng": -71.6547281,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3224015,
+   "lng": -71.6277631,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4968663,
+   "lng": -71.6379539,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4023512,
+   "lng": -71.5988124,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.306189,
+   "lng": -71.4802566,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5043524,
+   "lng": -71.5155302,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4936716,
+   "lng": -71.4286681,
+   "esperado": "Pocsi"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.320882,
+   "lng": -71.4878632,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4524528,
+   "lng": -71.5470126,
+   "esperado": "Jacobo Hunter"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4491041,
+   "lng": -71.4448036,
+   "esperado": "Sabandía"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3680999,
+   "lng": -71.5639907,
+   "esperado": "Avenida Primavera, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4069007,
+   "lng": -71.4563755,
+   "esperado": "Paucarpata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4278492,
+   "lng": -71.542651,
+   "esperado": "Saco Olivero, José Luis Bustamante y Rivero"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3889485,
+   "lng": -71.5547545,
+   "esperado": "Circunvalación, Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3508667,
+   "lng": -71.5187904,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3900786,
+   "lng": -71.5441191,
+   "esperado": "Calle Jerusalén, Yanahuara"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5164031,
+   "lng": -71.4330949,
+   "esperado": "Carretera Arequipa - Moquegua, Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4353614,
+   "lng": -71.65183,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4176073,
+   "lng": -71.6263309,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4669721,
+   "lng": -71.5348761,
+   "esperado": "El Pasto, Socabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4611923,
+   "lng": -71.5563897,
+   "esperado": "Avenida Paisajista, Jacobo Hunter"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.358242,
+   "lng": -71.6536885,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3875126,
+   "lng": -71.5351982,
+   "esperado": "Quinta Vivanco, Arequipa"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3103004,
+   "lng": -71.63068,
+   "esperado": "cerca de Profam Sector 1, Yura"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4389329,
+   "lng": -71.6079675,
+   "esperado": "cerca de Patasagua Alto, Tiabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5032842,
+   "lng": -71.6191849,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4308119,
+   "lng": -71.6333458,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4967552,
+   "lng": -71.4224144,
+   "esperado": "Pocsi"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4317983,
+   "lng": -71.6586149,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4767385,
+   "lng": -71.5969572,
+   "esperado": "Tiabaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3439117,
+   "lng": -71.5340669,
+   "esperado": "cerca de Tercer Mirador, Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3193227,
+   "lng": -71.6397075,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4831212,
+   "lng": -71.4412382,
+   "esperado": "Characato"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.4719185,
+   "lng": -71.4578825,
+   "esperado": "Characato"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3433238,
+   "lng": -71.525038,
+   "esperado": "Alto Selva Alegre"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3221339,
+   "lng": -71.5280721,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5121738,
+   "lng": -71.4296196,
+   "esperado": "Pocsi"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3046575,
+   "lng": -71.4934726,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3350029,
+   "lng": -71.5362827,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3145247,
+   "lng": -71.430327,
+   "esperado": "Miraflores"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3215329,
+   "lng": -71.4278216,
+   "esperado": "Miraflores"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3769048,
+   "lng": -71.4269546,
+   "esperado": "Chiguata"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5096568,
+   "lng": -71.6381385,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3765891,
+   "lng": -71.5930106,
+   "esperado": "Cerro Colorado"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5183934,
+   "lng": -71.5117407,
+   "esperado": "Yarabamba"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.510407,
+   "lng": -71.4380498,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.5043115,
+   "lng": -71.4918311,
+   "esperado": "Mollebaya"
+  },
+  {
+   "grupo": "metropolitano",
+   "lat": -16.3997638,
+   "lng": -71.5286111,
+   "esperado": "Avenida La Paz, Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4383148,
+   "lng": -71.6597836,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4533133,
+   "lng": -72.1467769,
+   "esperado": "Santa Rita de Siguas"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5535913,
+   "lng": -71.6632404,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4751838,
+   "lng": -71.9577128,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.7894085,
+   "lng": -71.8141628,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.7374383,
+   "lng": -71.5251317,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.6750707,
+   "lng": -71.9631142,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4085782,
+   "lng": -71.6951525,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5640356,
+   "lng": -71.921072,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3477014,
+   "lng": -72.0310841,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.735309,
+   "lng": -71.8556696,
+   "esperado": "La Joya"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.276519,
+   "lng": -72.0697086,
+   "esperado": "cerca de Las Lomillas, Santa Isabel de Siguas"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.1418092,
+   "lng": -71.3373256,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.2547281,
+   "lng": -71.3772341,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4679475,
+   "lng": -71.5065622,
+   "esperado": "VIA troncal, Sabandía"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3193022,
+   "lng": -71.8776062,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4535155,
+   "lng": -72.0846298,
+   "esperado": "Santa Rita de Siguas"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.798945,
+   "lng": -71.8204568,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.1239414,
+   "lng": -71.7019812,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5069595,
+   "lng": -71.6332449,
+   "esperado": "Uchumayo"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4413822,
+   "lng": -71.8440373,
+   "esperado": "La Joya"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.2801923,
+   "lng": -71.6087396,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3447998,
+   "lng": -71.9620064,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5359318,
+   "lng": -71.9552414,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5873824,
+   "lng": -71.5245381,
+   "esperado": "Yarabamba"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.323894,
+   "lng": -71.6335676,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.585186,
+   "lng": -71.6687491,
+   "esperado": "Yarabamba"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.119293,
+   "lng": -71.8574491,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.2846287,
+   "lng": -71.4855613,
+   "esperado": "Cayma"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3870644,
+   "lng": -71.9573464,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.4699759,
+   "lng": -71.2581318,
+   "esperado": "Pocsi"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3748877,
+   "lng": -71.697388,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3365035,
+   "lng": -72.0868658,
+   "esperado": "Santa Isabel de Siguas"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.7109781,
+   "lng": -71.5870045,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5822408,
+   "lng": -71.7922883,
+   "esperado": "La Joya"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.6235628,
+   "lng": -71.75569,
+   "esperado": "La Joya"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.5931572,
+   "lng": -72.0494351,
+   "esperado": "Vítor"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3565334,
+   "lng": -72.1949913,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.3889169,
+   "lng": -72.1037667,
+   "esperado": "Carretera Panamericana Sur, Santa Rita de Siguas"
+  },
+  {
+   "grupo": "rural",
+   "lat": -16.217637,
+   "lng": -71.7561583,
+   "esperado": "Yura"
+  },
+  {
+   "grupo": "fuera",
+   "lat": -12.0464,
+   "lng": -77.0428,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "fuera",
+   "lat": -13.532,
+   "lng": -71.9675,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "fuera",
+   "lat": -15.8402,
+   "lng": -70.0219,
+   "esperado": "zona de Arequipa"
+  },
+  {
+   "grupo": "fuera",
+   "lat": -17.0,
+   "lng": -73.5,
+   "esperado": "zona de Arequipa"
+  }
+ ]
+}

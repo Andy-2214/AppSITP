@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.sitp.arequipa.presentation.auth.AuthViewModel
 import com.sitp.arequipa.presentation.busqueda.BusquedaViewModel
+import com.sitp.arequipa.presentation.busqueda.UbicacionViewModel
 import com.sitp.arequipa.presentation.comentarios.ComentarioViewModel
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
+import com.sitp.arequipa.presentation.map.MapaViewModel
 import com.sitp.arequipa.presentation.perfil.PerfilViewModel
 
 class AppViewModelFactory(
@@ -25,6 +27,18 @@ class AppViewModelFactory(
                     verificarSesionUseCase = container.verificarSesionUseCase
                 ) as T
 
+            modelClass.isAssignableFrom(UbicacionViewModel::class.java) ->
+                UbicacionViewModel(
+                    obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase,
+                    obtenerAtribucionDatos = container.obtenerAtribucionDatosUseCase
+                ) as T
+
+            modelClass.isAssignableFrom(MapaViewModel::class.java) ->
+                MapaViewModel(
+                    obtenerUbicacionActual = container.obtenerUbicacionActualUseCase,
+                    seguirUbicacionUseCase = container.seguirUbicacionUseCase
+                ) as T
+
             modelClass.isAssignableFrom(HistorialViewModel::class.java) ->
                 HistorialViewModel(
                     obtenerSesionUseCase = container.obtenerSesionUseCase,
@@ -33,7 +47,8 @@ class AppViewModelFactory(
                     eliminarBusquedaUseCase = container.eliminarBusquedaUseCase,
                     cargarFavoritosUseCase = container.cargarFavoritosUseCase,
                     guardarFavoritoUseCase = container.guardarFavoritoUseCase,
-                    eliminarFavoritoUseCase = container.eliminarFavoritoUseCase
+                    eliminarFavoritoUseCase = container.eliminarFavoritoUseCase,
+                    obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase
                 ) as T
 
             modelClass.isAssignableFrom(ComentarioViewModel::class.java) ->
