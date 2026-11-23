@@ -6,7 +6,6 @@ import com.sitp.arequipa.domain.repository.RouteRepository
 import com.sitp.arequipa.domain.usecase.BuscarRutaUseCase
 import com.sitp.arequipa.domain.usecase.RecomendarRutaIAUseCase
 import com.sitp.arequipa.domain.usecase.ResultadoBusqueda
-import com.sitp.arequipa.domain.usecase.SincronizarRutasUseCase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,23 +15,13 @@ import kotlinx.coroutines.launch
 class BusquedaViewModel(
     private val routeRepository: RouteRepository,
     private val buscarRutaUseCase: BuscarRutaUseCase,
-    private val recomendarRutaIAUseCase: RecomendarRutaIAUseCase,
-    private val sincronizarRutasUseCase: SincronizarRutasUseCase
+    private val recomendarRutaIAUseCase: RecomendarRutaIAUseCase
 ) : ViewModel() {
 
     private val _busquedaState = MutableStateFlow<BusquedaState>(BusquedaState.Idle)
     val busquedaState: StateFlow<BusquedaState> = _busquedaState
 
-    init {
-        viewModelScope.launch {
-            try {
-                sincronizarRutasUseCase()
-                println("DEBUG BusquedaViewModel: Rutas sincronizadas con éxito localmente.")
-            } catch (e: Exception) {
-                println("DEBUG BusquedaViewModel: Error al sincronizar rutas: ${e.message}")
-            }
-        }
-    }
+    // La sincronización de rutas se hace una sola vez, en MapScreen.
 
     fun buscarRutaPorCoordenadas(
         origenLat: Double,
