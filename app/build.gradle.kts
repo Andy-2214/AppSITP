@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
 }
 
+// Room exporta aquí el esquema de CatalogoDatabase; scripts/catalogo/construir_catalogo.py
+// lo usa para generar assets/catalogo.db con exactamente la misma estructura (ADR-001).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.sitp.arequipa"
     compileSdk {
