@@ -1,5 +1,6 @@
 package com.sitp.arequipa.data.local.catalogo
 
+import com.sitp.arequipa.data.local.catalogo.entity.CalleCentro
 import com.sitp.arequipa.data.local.catalogo.entity.CatalogoInfoEntity
 import com.sitp.arequipa.data.local.catalogo.entity.DistritoEntity
 import com.sitp.arequipa.data.local.catalogo.entity.DistritoSegmentoEntity
@@ -55,6 +56,14 @@ class CatalogoLugaresSourceTest {
         }
 
         override fun segmentosDeDistritos() = bordes
+
+        override fun todosLosLugares(): List<LugarEntity> = lugares
+
+        /** Igual que la consulta SQL: un punto por calle, el promedio de sus tramos. */
+        override fun callesConCentro(): List<CalleCentro> =
+            calles.groupBy { it.nombre }.map { (nombre, tramos) ->
+                CalleCentro(nombre, "residential", tramos.map { it.lat1E6 }.average().toInt(), tramos.map { it.lng1E6 }.average().toInt())
+            }
 
         override fun info(): List<CatalogoInfoEntity> {
             lecturasDeInfo++

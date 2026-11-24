@@ -2,6 +2,7 @@ package com.sitp.arequipa.data.local.catalogo
 
 import androidx.room.Dao
 import androidx.room.Query
+import com.sitp.arequipa.data.local.catalogo.entity.CalleCentro
 import com.sitp.arequipa.data.local.catalogo.entity.CatalogoInfoEntity
 import com.sitp.arequipa.data.local.catalogo.entity.DistritoEntity
 import com.sitp.arequipa.data.local.catalogo.entity.DistritoSegmentoEntity
@@ -36,6 +37,21 @@ interface CatalogoDao {
         """
     )
     fun lugaresEnArea(minLatE6: Int, maxLatE6: Int, minLngE6: Int, maxLngE6: Int): List<LugarEntity>
+
+    /** Todos los lugares (~16 000), para el índice de búsqueda por nombre en memoria. */
+    @Query("SELECT * FROM lugares")
+    fun todosLosLugares(): List<LugarEntity>
+
+    /** Cada calle con el punto promedio de sus tramos, para buscarla por nombre (no cambia el esquema). */
+    @Query(
+        """
+        SELECT c.nombre AS nombre, c.tipo AS tipo,
+               CAST(AVG(s.lat1E6) AS INTEGER) AS latE6, CAST(AVG(s.lng1E6) AS INTEGER) AS lngE6
+        FROM calles c INNER JOIN calle_segmentos s ON s.calleId = c.id
+        GROUP BY c.id
+        """
+    )
+    fun callesConCentro(): List<CalleCentro>
 
     @Query("SELECT * FROM distritos ORDER BY id")
     fun distritos(): List<DistritoEntity>

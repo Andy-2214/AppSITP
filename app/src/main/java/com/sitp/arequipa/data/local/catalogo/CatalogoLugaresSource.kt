@@ -34,6 +34,7 @@ class CatalogoLugaresSource(private val dao: CatalogoDao) {
     private val mutex = Mutex()
     private var distritos: List<Distrito>? = null
     private var info: Map<String, String>? = null
+    private var buscador: BuscadorNombres? = null
 
     suspend fun coordenadasANombre(lat: Double, lng: Double): String = try {
         val distrito = distritoDe(lat, lng)
@@ -81,6 +82,36 @@ class CatalogoLugaresSource(private val dao: CatalogoDao) {
         val orden = compareBy<Pair<LugarEntity, Double>> { it.second }.thenBy { it.first.nombre }
         val referencia = cercanos.filter { it.first.tipo in TIPOS_REFERENCIA }.minWithOrNull(orden)
         return (referencia ?: cercanos.minWithOrNull(orden))?.first?.nombre
+    }
+
+    /** Distrito que contiene el punto, o null (fuera de la provincia o si falla la lectura). */
+    suspend fun distrito(lat: Double, lng: Double): String? = try {
+        distritoDe(lat, lng)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    /**
+     * Índice de nombres para «Buscar lugar» y el chat con IA (ADR-011): los ~16 000 lugares y ~8 400 calles se
+     * cargan una sola vez en memoria. No cambia el esquema de catalogo.db. Si la lectura falla, índice vacío.
+     */
+    suspend fun buscador(): BuscadorNombres = mutex.withLock {
+        buscador ?: try {
+            val lugares = dao.todosLosLugares().map {
+                BuscadorNombres.Entrada(it.nombre, GeoUtils.desdeE6(it.latE6), GeoUtils.desdeE6(it.lngE6), it.tipo, esCalle = false)
+            }
+            val calles = dao.callesConCentro().map {
+                BuscadorNombres.Entrada(it.nombre, GeoUtils.desdeE6(it.latE6), GeoUtils.desdeE6(it.lngE6), "highway=${it.tipo}", esCalle = true)
+            }
+            BuscadorNombres(lugares + calles).also { buscador = it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("DEBUG CatalogoLugares: no se pudo cargar el índice de nombres (${e.message})")
+            BuscadorNombres(emptyList())
+        }
     }
 
     private suspend fun distritoDe(lat: Double, lng: Double): String? =
@@ -138,6 +169,30 @@ class CatalogoLugaresSource(private val dao: CatalogoDao) {
         )
 
         fun esNombreGenerico(nombre: String): Boolean = NOMBRE_GENERICO.matches(nombre.trim())
+
+        /** Nombre corto del tipo de lugar para mostrar junto a un candidato («Mercado», «Colegio»…). */
+        fun etiquetaTipo(tipo: String): String {
+            val (clave, valor) = tipo.split('=', limit = 2).let { it.getOrElse(0) { "" } to it.getOrElse(1) { "" } }
+            return when {
+                clave == "highway" -> "Calle"
+                valor == "marketplace" -> "Mercado"
+                valor in setOf("school", "kindergarten") -> "Colegio"
+                valor in setOf("university", "college") -> "Universidad"
+                valor in setOf("hospital", "clinic", "doctors") || clave == "healthcare" -> "Salud"
+                valor == "pharmacy" -> "Farmacia"
+                valor == "place_of_worship" -> "Iglesia"
+                valor in setOf("park", "garden", "playground") -> "Parque"
+                valor in setOf("stadium", "sports_centre", "pitch") -> "Deporte"
+                valor in setOf("bus_station", "station") -> "Transporte"
+                valor in setOf("townhall", "police", "courthouse", "fire_station") -> "Servicio público"
+                valor in setOf("bank", "atm") -> "Banco"
+                valor in setOf("mall", "supermarket") -> "Centro comercial"
+                clave == "shop" -> "Comercio"
+                clave == "tourism" || clave == "historic" -> "Turismo"
+                clave == "place" -> "Zona"
+                else -> "Lugar"
+            }
+        }
 
         /** Tipos de lugar ("clave=valor" del catálogo) que la gente usa como referencia para ubicarse. */
         val TIPOS_REFERENCIA = setOf(

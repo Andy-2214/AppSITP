@@ -93,3 +93,11 @@ data class SegmentoCalle(
     val lat2E6: Int,
     val lng2E6: Int
 )
+
+/** Resultado de consulta: una calle con un punto representativo (promedio de sus tramos), para buscarla por nombre. */
+data class CalleCentro(
+    val nombre: String,
+    val tipo: String,
+    val latE6: Int,
+    val lngE6: Int
+)
