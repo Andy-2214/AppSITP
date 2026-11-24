@@ -69,7 +69,9 @@ class AppViewModelFactory(
                 BusquedaViewModel(
                     routeRepository = container.routeRepository,
                     buscarRutaUseCase = container.buscarRutaUseCase,
-                    recomendarRutaIAUseCase = container.recomendarRutaIAUseCase
+                    buscarLugaresUseCase = container.buscarLugaresUseCase,
+                    interpretarConsultaUseCase = container.interpretarConsultaUseCase,
+                    obtenerNombreUbicacion = container.obtenerNombreUbicacionUseCase
                 ) as T
 
             else -> throw IllegalArgumentException("ViewModel no soportado: ${modelClass.name}")

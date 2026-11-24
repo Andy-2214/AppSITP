@@ -7,12 +7,13 @@ import com.sitp.arequipa.data.local.ubicacion.UbicacionDispositivoSource
 import com.sitp.arequipa.data.remote.FirebaseAuthSource
 import com.sitp.arequipa.data.remote.FirestoreComentarioSource
 import com.sitp.arequipa.data.remote.FirestoreHistorialSource
-import com.sitp.arequipa.data.remote.GroqAISource
+import com.sitp.arequipa.data.local.cache.CacheBusquedasRepositoryImpl
+import com.sitp.arequipa.data.remote.ClienteChatIA
 import com.sitp.arequipa.data.repository.AuthRepositoryImpl
 import com.sitp.arequipa.data.repository.ComentarioRepositoryImpl
 import com.sitp.arequipa.data.repository.HistorialRepositoryImpl
 import com.sitp.arequipa.data.repository.LugaresRepositoryImpl
-import com.sitp.arequipa.data.repository.RecomendacionRepositoryImpl
+import com.sitp.arequipa.data.repository.AsistenteRepositoryImpl
 import com.sitp.arequipa.data.repository.RouteRepositoryImpl
 import com.sitp.arequipa.data.repository.UbicacionRepositoryImpl
 import com.sitp.arequipa.data.repository.UsuarioRepositoryImpl
@@ -20,7 +21,8 @@ import com.sitp.arequipa.domain.repository.AuthRepository
 import com.sitp.arequipa.domain.repository.ComentarioRepository
 import com.sitp.arequipa.domain.repository.HistorialRepository
 import com.sitp.arequipa.domain.repository.LugaresRepository
-import com.sitp.arequipa.domain.repository.RecomendacionRepository
+import com.sitp.arequipa.domain.repository.AsistenteRepository
+import com.sitp.arequipa.domain.repository.CacheBusquedasRepository
 import com.sitp.arequipa.domain.repository.RouteRepository
 import com.sitp.arequipa.domain.repository.UbicacionRepository
 import com.sitp.arequipa.domain.repository.UsuarioRepository
@@ -41,7 +43,8 @@ import com.sitp.arequipa.domain.usecase.ObtenerPerfilUseCase
 import com.sitp.arequipa.domain.usecase.ObtenerSesionUseCase
 import com.sitp.arequipa.domain.usecase.ObtenerUbicacionActualUseCase
 import com.sitp.arequipa.domain.usecase.PublicarComentarioUseCase
-import com.sitp.arequipa.domain.usecase.RecomendarRutaIAUseCase
+import com.sitp.arequipa.domain.usecase.InterpretarConsultaUseCase
+import com.sitp.arequipa.domain.usecase.BuscarLugaresUseCase
 import com.sitp.arequipa.domain.usecase.RecuperarPasswordUseCase
 import com.sitp.arequipa.domain.usecase.ReenviarVerificacionUseCase
 import com.sitp.arequipa.domain.usecase.RegisterUseCase
@@ -62,7 +65,8 @@ class AppContainer private constructor(context: Context) {
     // Catálogo local de lugares (ADR-001/002). La base se abre recién en la primera consulta.
     private val catalogoLugaresSource =
         CatalogoLugaresSource(CatalogoDatabase.getDatabase(context).catalogoDao())
-    private val groqAISource = GroqAISource()
+    // IA genérica (ADR-011): el proveedor y el modelo se cambian en data/remote/ConfigIA.kt
+    private val clienteChatIA = ClienteChatIA()
     // GPS propio de Android (sin Google Play Services, funciona sin internet)
     private val ubicacionDispositivoSource = UbicacionDispositivoSource(context)
 
@@ -71,7 +75,10 @@ class AppContainer private constructor(context: Context) {
     val historialRepository: HistorialRepository = HistorialRepositoryImpl(firestoreHistorialSource)
     val comentarioRepository: ComentarioRepository = ComentarioRepositoryImpl(firestoreComentarioSource)
     val lugaresRepository: LugaresRepository = LugaresRepositoryImpl(catalogoLugaresSource)
-    val recomendacionRepository: RecomendacionRepository = RecomendacionRepositoryImpl(groqAISource)
+    val asistenteRepository: AsistenteRepository = AsistenteRepositoryImpl(clienteChatIA)
+    // Caché de búsquedas (ADR-010) en un archivo privado de la app
+    val cacheBusquedasRepository: CacheBusquedasRepository =
+        CacheBusquedasRepositoryImpl(java.io.File(context.filesDir, "cache_busquedas.json"))
     val routeRepository: RouteRepository = RouteRepositoryImpl.getInstance(context)
     val ubicacionRepository: UbicacionRepository = UbicacionRepositoryImpl(ubicacionDispositivoSource)
 
@@ -97,8 +104,9 @@ class AppContainer private constructor(context: Context) {
     val obtenerAtribucionDatosUseCase = ObtenerAtribucionDatosUseCase(lugaresRepository)
     val obtenerUbicacionActualUseCase = ObtenerUbicacionActualUseCase(ubicacionRepository)
     val seguirUbicacionUseCase = SeguirUbicacionUseCase(ubicacionRepository)
-    val recomendarRutaIAUseCase = RecomendarRutaIAUseCase(recomendacionRepository, lugaresRepository)
-    val buscarRutaUseCase = BuscarRutaUseCase()
+    val buscarRutaUseCase = BuscarRutaUseCase(cacheBusquedasRepository)
+    val buscarLugaresUseCase = BuscarLugaresUseCase(lugaresRepository)
+    val interpretarConsultaUseCase = InterpretarConsultaUseCase(asistenteRepository, lugaresRepository)
     val sincronizarRutasUseCase = SincronizarRutasUseCase(routeRepository)
 
     val obtenerPerfilUseCase = ObtenerPerfilUseCase(usuarioRepository)
