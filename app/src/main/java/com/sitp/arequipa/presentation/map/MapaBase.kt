@@ -99,6 +99,10 @@ class ControlCamara {
         if (animar) m.animateCamera(actualizacion, 600) else m.moveCamera(actualizacion)
     }
 
+    /** Punto que está en el centro de la pantalla (donde apunta el pin fijo al elegir origen o destino). */
+    fun centroActual(): Coordenada? =
+        mapa?.cameraPosition?.target?.let { Coordenada(it.latitude, it.longitude) }
+
     internal fun guardarPosicion() {
         mapa?.cameraPosition?.let { c ->
             c.target?.let { ultimaPosicion = PosicionCamara(Coordenada(it.latitude, it.longitude), c.zoom) }
@@ -116,11 +120,14 @@ fun MapaBase(
     iconos: Map<String, Bitmap> = emptyMap(),
     ubicacionUsuario: Coordenada? = null,
     controlCamara: ControlCamara = remember { ControlCamara() },
-    onToqueMapa: (Coordenada) -> Unit = {}
+    onToqueMapa: (Coordenada) -> Unit = {},
+    /** Se llama cuando el mapa deja de moverse, con el punto del centro de la pantalla. */
+    onCamaraQuieta: (Coordenada) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val alTocar by rememberUpdatedState(onToqueMapa)
+    val alQuedarQuieta by rememberUpdatedState(onCamaraQuieta)
     var estilo by remember { mutableStateOf<Style?>(null) }
     var credito by remember { mutableStateOf<String?>(null) }
 
@@ -150,6 +157,9 @@ fun MapaBase(
                     )
                 }
                 mapa.addOnMapClickListener { p -> alTocar(Coordenada(p.latitude, p.longitude)); true }
+                mapa.addOnCameraIdleListener {
+                    mapa.cameraPosition.target?.let { alQuedarQuieta(Coordenada(it.latitude, it.longitude)) }
+                }
                 mapa.setStyle(Style.Builder().fromUri(ESTILO)) { s ->
                     prepararEstilo(context, s)
                     credito = leerCredito(s)

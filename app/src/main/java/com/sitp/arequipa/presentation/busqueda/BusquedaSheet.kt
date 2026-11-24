@@ -15,6 +15,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -40,7 +42,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sitp.arequipa.di.provideViewModelFactory
 import com.sitp.arequipa.domain.model.AtribucionDatos
 import com.sitp.arequipa.domain.model.Coordenada
+import com.sitp.arequipa.domain.model.Itinerario
+import com.sitp.arequipa.domain.model.LugarEncontrado
+import com.sitp.arequipa.domain.model.ModoBusqueda
+import com.sitp.arequipa.domain.model.PuntoInterpretado
 import com.sitp.arequipa.presentation.historial.HistorialViewModel
+import kotlin.math.roundToInt
 
 private val BusRed      = Color(0xFFC62828)
 private val BusDarkRed  = Color(0xFF8E1B1B)
@@ -156,26 +163,38 @@ fun parsearRespuestaIA(respuesta: String): RutaParseada {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Panel de búsqueda (ADR-010 y ADR-011). Los pines se ubican moviendo el mapa bajo un pin fijo; también se
+ * pueden proponer con «Buscar lugar» (sin internet) o con el chat con IA, que solo interpreta la frase.
+ * Las rutas las calcula la app y las opciones aparecen a medida que el motor las encuentra.
+ */
 @Composable
 fun BusquedaSheet(
     origenPunto: Coordenada?,
     destinoPunto: Coordenada?,
+    ubicacionUsuario: Coordenada?,
     onDismiss: () -> Unit,
     onSeleccionarOrigen: () -> Unit,
     onSeleccionarDestino: () -> Unit,
-    onRutaEncontrada: (List<String>) -> Unit,
+    onElegirLugar: (lugar: LugarEncontrado, esOrigen: Boolean) -> Unit,
+    onUbicarConIA: (origen: Coordenada?, destino: Coordenada?) -> Unit,
+    onItinerario: (Itinerario?) -> Unit,
     onNuevaOptimizacion: () -> Unit,
+    preferenciaInicial: String? = null,
     rutaColores: Map<String, String> = emptyMap(),
-    rutaSentidos: Map<String, String> = emptyMap(),
     rutaEtiquetas: Map<String, String> = emptyMap(),
     rutaCombis: Map<String, String> = emptyMap(),
     busquedaViewModel: BusquedaViewModel = viewModel(factory = provideViewModelFactory()),
     historialViewModel: HistorialViewModel = viewModel(factory = provideViewModelFactory()),
     ubicacionViewModel: UbicacionViewModel = viewModel(factory = provideViewModelFactory())
 ) {
-    var preferencia   by remember { mutableStateOf("tiempo") }
-    var consultaExtra by remember { mutableStateOf("") }
+    var modo by remember { mutableStateOf(ModoBusqueda.desdeTexto(preferenciaInicial)) }
+    var consultaIA by remember { mutableStateOf("") }
+    var textoLugar by remember { mutableStateOf("") }
     val busquedaState by busquedaViewModel.busquedaState.collectAsState()
+    val lugares by busquedaViewModel.lugares.collectAsState()
+    val interpretacion by busquedaViewModel.interpretacion.collectAsState()
+    val nombres by busquedaViewModel.nombres.collectAsState()
 
     // Nombres de calle de los pines y crédito de la fuente de datos (sin saber qué proveedor es)
     val nombreOrigen by ubicacionViewModel.origen.collectAsState()
@@ -184,50 +203,57 @@ fun BusquedaSheet(
     LaunchedEffect(origenPunto) { ubicacionViewModel.nombrarOrigen(origenPunto?.lat, origenPunto?.lng) }
     LaunchedEffect(destinoPunto) { ubicacionViewModel.nombrarDestino(destinoPunto?.lat, destinoPunto?.lng) }
 
-    // ── Nuevo estado: panel minimizado ────────────────────────────────────
     var minimizado by remember { mutableStateOf(false) }
 
+    // Resultados: modo que se está viendo y opción elegida
+    var modoVista by remember { mutableStateOf(modo) }
+    var opcionElegida by remember { mutableIntStateOf(0) }
+    val resultados = busquedaState as? BusquedaState.Resultados
+    val opcionesVista = resultados?.opciones?.de(modoVista).orEmpty()
+    val itinerario = opcionesVista.getOrNull(opcionElegida) ?: opcionesVista.firstOrNull()
+    LaunchedEffect(itinerario) { onItinerario(itinerario) }
+    LaunchedEffect(busquedaState is BusquedaState.Calculando) {
+        if (busquedaState is BusquedaState.Calculando) { modoVista = modo; opcionElegida = 0 }
+    }
+
+    // La preferencia que entendió la IA («lo más barato») cambia el modo
+    LaunchedEffect(interpretacion) {
+        (interpretacion as? InterpretacionState.Lista)?.resultado?.preferencia?.let { modo = it }
+    }
+
+    // Historial: una vez por búsqueda, al terminar y con los nombres de calle ya resueltos
     var yaGuardado by remember { mutableStateOf(false) }
-    LaunchedEffect(busquedaState) {
-        if (busquedaState is BusquedaState.Success && !yaGuardado) {
+    LaunchedEffect(busquedaState, nombres) {
+        val r = busquedaState
+        if (r is BusquedaState.Idle || r is BusquedaState.Calculando) yaGuardado = false
+        if (r is BusquedaState.Resultados && r.opciones.completa && !yaGuardado && origenPunto != null && destinoPunto != null) {
+            val mejor = r.opciones.de(r.modo).firstOrNull() ?: return@LaunchedEffect
+            if (mejor.tramosCombi.any { it.desde !in nombres || it.hasta !in nombres }) return@LaunchedEffect
             yaGuardado = true
-            val r = (busquedaState as BusquedaState.Success).respuesta
-            if (origenPunto != null && destinoPunto != null) {
-                historialViewModel.guardarBusqueda(
-                    // Se guardan coordenadas (no nombres): "Repetir búsqueda" y los favoritos las vuelven a leer
-                    origen      = origenPunto.comoTexto(),
-                    destino     = destinoPunto.comoTexto(),
-                    preferencia = preferencia,
-                    respuestaIA = r
-                )
-            }
+            historialViewModel.guardarBusqueda(
+                // Se guardan coordenadas (no nombres): "Repetir búsqueda" y los favoritos las vuelven a leer
+                origen = origenPunto.comoTexto(),
+                destino = destinoPunto.comoTexto(),
+                preferencia = r.modo.comoTexto(),
+                respuestaIA = TextoItinerario.aTextoHistorial(mejor, nombres)
+            )
         }
-        if (busquedaState is BusquedaState.Idle) yaGuardado = false
     }
 
     var primeraVez by remember { mutableStateOf(true) }
     LaunchedEffect(origenPunto, destinoPunto) {
-        if (primeraVez) primeraVez = false else busquedaViewModel.resetState()
+        if (primeraVez) primeraVez = false else { busquedaViewModel.resetState(); onItinerario(null) }
     }
 
-    val rutaParseada = remember(busquedaState) {
-        if (busquedaState is BusquedaState.Success)
-            parsearRespuestaIA((busquedaState as BusquedaState.Success).respuesta)
-        else RutaParseada(emptyList(), emptyList(), "", "")
+    val combiDe: (String) -> String = { codigo ->
+        rutaCombis.entries.firstOrNull { it.key.trim().equals(codigo.trim(), ignoreCase = true) }?.value ?: codigo
     }
-
-    LaunchedEffect(rutaParseada.codigos) {
-        if (rutaParseada.codigos.isNotEmpty()) onRutaEncontrada(rutaParseada.codigos)
-    }
+    val mostrandoResultados = busquedaState is BusquedaState.Resultados || busquedaState is BusquedaState.Calculando
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            // Si minimizado: altura fija tipo "pastilla"; si no: 55% de pantalla
-            .then(
-                if (minimizado) Modifier.wrapContentHeight()
-                else Modifier.fillMaxHeight(0.55f)
-            ),
+            .then(if (minimizado) Modifier.wrapContentHeight() else Modifier.fillMaxHeight(0.6f)),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         color = Color.White,
         shadowElevation = 16.dp
@@ -235,192 +261,175 @@ fun BusquedaSheet(
         Column(modifier = Modifier.fillMaxWidth()) {
 
             // ── Handle + botón minimizar ──────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 4.dp),
-            ) {
-                // Barrita gris centrada
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 4.dp)) {
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .width(40.dp).height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFFE0E0E0))
+                    modifier = Modifier.align(Alignment.Center).width(40.dp).height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)).background(Color(0xFFE0E0E0))
                 )
-                // Botón minimizar/expandir alineado a la derecha
                 IconButton(
                     onClick = { minimizado = !minimizado },
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 8.dp)
-                        .size(32.dp)
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(32.dp)
                 ) {
                     Icon(
-                        imageVector = if (minimizado)
-                            Icons.Filled.KeyboardArrowUp
-                        else
-                            Icons.Filled.KeyboardArrowDown,
+                        imageVector = if (minimizado) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                         contentDescription = if (minimizado) "Expandir" else "Minimizar",
-                        tint = BusGray,
-                        modifier = Modifier.size(22.dp)
+                        tint = BusGray, modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            // ── Fila resumen visible siempre (cuando minimizado muestra info básica) ──
             if (minimizado) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { minimizado = false }
+                    modifier = Modifier.fillMaxWidth().clickable { minimizado = false }
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(BusLightRed),
+                        modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(BusLightRed),
                         contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(18.dp))
-                    }
+                    ) { Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(18.dp)) }
                     Text(
-                        text = when (busquedaState) {
-                            is BusquedaState.Success -> "Ruta encontrada — toca para ver"
-                            is BusquedaState.Loading -> "Buscando ruta..."
+                        text = when (val s = busquedaState) {
+                            is BusquedaState.Resultados -> if (s.opciones.vacia) "Sin rutas — toca para ver" else "${s.opciones.de(modoVista).size} opciones — toca para ver"
+                            is BusquedaState.Calculando -> "Calculando rutas..."
                             else -> "Buscar ruta — toca para abrir"
                         },
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF1A1A1A)
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A)
                     )
                 }
             }
 
-            // ── Contenido principal — animado al mostrar/ocultar ──────────
             AnimatedVisibility(
                 visible = !minimizado,
                 enter = expandVertically(animationSpec = tween(250)),
-                exit  = shrinkVertically(animationSpec = tween(200))
+                exit = shrinkVertically(animationSpec = tween(200))
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 24.dp),
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp).padding(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        val esResultado = busquedaState is BusquedaState.Success
                         IconButton(
                             onClick = {
-                                if (esResultado) {
-                                    consultaExtra = ""
-                                    primeraVez    = true
+                                if (mostrandoResultados) {
+                                    primeraVez = true
                                     busquedaViewModel.resetState()
+                                    onItinerario(null)
                                     onNuevaOptimizacion()
-                                } else {
-                                    onDismiss()
-                                }
+                                } else onDismiss()
                             },
                             modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Atrás",
-                                tint = BusDarkRed,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = BusDarkRed, modifier = Modifier.size(22.dp)) }
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(9.dp))
-                                .background(BusLightRed),
+                            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(BusLightRed),
                             contentAlignment = Alignment.Center
                         ) { Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(20.dp)) }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Buscar ruta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1A1A))
                     }
 
-                    if (busquedaState !is BusquedaState.Success && busquedaState !is BusquedaState.Loading) {
-                        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().clickable { onSeleccionarOrigen() },
-                                shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
-                                colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
-                            ) {
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Filled.LocationOn, null, tint = BusGreen, modifier = Modifier.size(22.dp))
-                                    Column {
-                                        Text("ORIGEN", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                                        Text(
-                                            if (origenPunto != null) textoPunto(origenPunto, nombreOrigen)
-                                            else "Toca para marcar origen",
-                                            fontSize = 14.sp, color = if (origenPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                    if (!mostrandoResultados) {
+                        // ── Origen y destino: se ubican moviendo el mapa bajo un pin fijo ──
+                        PuntosOrigenDestino(origenPunto, destinoPunto, nombreOrigen, nombreDestino, onSeleccionarOrigen, onSeleccionarDestino)
+
+                        // ── Buscar lugar (catálogo local, sin IA, sin internet) ──
+                        Text("Buscar lugar", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                        OutlinedTextField(
+                            value = textoLugar,
+                            onValueChange = {
+                                textoLugar = it
+                                busquedaViewModel.buscarLugares(it, ubicacionUsuario ?: origenPunto)
+                            },
+                            placeholder = { Text("Ej: mercado San Camilo", fontSize = 13.sp, color = BusGray) },
+                            leadingIcon = { Icon(Icons.Filled.Search, null, tint = BusGray) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BusRed, cursorColor = BusRed)
+                        )
+                        if (lugares.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                lugares.forEach { lugar ->
+                                    FilaLugar(
+                                        lugar = lugar,
+                                        onOrigen = { onElegirLugar(lugar, true); textoLugar = ""; busquedaViewModel.limpiarLugares() },
+                                        onDestino = { onElegirLugar(lugar, false); textoLugar = ""; busquedaViewModel.limpiarLugares() }
+                                    )
                                 }
                             }
-                            Box(modifier = Modifier.padding(start = 28.dp).width(2.dp).height(6.dp).background(Color(0xFFBDBDBD)))
-                            Card(
-                                modifier = Modifier.fillMaxWidth().clickable { onSeleccionarDestino() },
-                                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 14.dp, bottomEnd = 14.dp),
-                                colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
-                            ) {
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(22.dp))
-                                    Column {
-                                        Text("DESTINO", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                                        Text(
-                                            if (destinoPunto != null) textoPunto(destinoPunto, nombreDestino)
-                                            else "Toca para marcar destino",
-                                            fontSize = 14.sp, color = if (destinoPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
+                        } else if (textoLugar.trim().length >= 3) {
+                            Text("Sin coincidencias en el mapa. Prueba con otro nombre o mueve el mapa.", fontSize = 12.sp, color = BusGray)
                         }
+
+                        // ── Chat con IA: solo interpreta la frase (necesita internet) ──
+                        Text("Pregúntale a la IA (necesita internet)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                        OutlinedTextField(
+                            value = consultaIA, onValueChange = { consultaIA = it },
+                            placeholder = { Text("Ej: quiero ir de la UNSA al mercado San Camilo", fontSize = 13.sp, color = BusGray) },
+                            modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3,
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { busquedaViewModel.interpretar(consultaIA, ubicacionUsuario) },
+                                    enabled = consultaIA.isNotBlank() && interpretacion !is InterpretacionState.Interpretando
+                                ) { Icon(Icons.Filled.AutoAwesome, "Interpretar", tint = if (consultaIA.isNotBlank()) BusRed else BusGray) }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BusRed, cursorColor = BusRed)
+                        )
+                        ResultadoInterpretacionVista(
+                            estado = interpretacion,
+                            ubicacionUsuario = ubicacionUsuario,
+                            onElegirLugar = onElegirLugar,
+                            onUbicar = { o, d -> onUbicarConIA(o, d); busquedaViewModel.limpiarInterpretacion() },
+                            onCerrar = { busquedaViewModel.limpiarInterpretacion() }
+                        )
 
                         Text("Preferencia:", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PreferenciaCard(Icons.Filled.AccessTime, "Menor tiempo", "Llega más rápido a tu destino", preferencia == "tiempo") { preferencia = "tiempo" }
-                            PreferenciaCard(Icons.Filled.MonetizationOn, "Menor costo", "La ruta más económica", preferencia == "costo") { preferencia = "costo" }
+                            PreferenciaCard(Icons.Filled.AccessTime, "Menor tiempo", "Llega más rápido a tu destino", modo == ModoBusqueda.TIEMPO) { modo = ModoBusqueda.TIEMPO }
+                            PreferenciaCard(Icons.Filled.MonetizationOn, "Menor costo", "Menos combis (S/1.30 cada una)", modo == ModoBusqueda.COSTO) { modo = ModoBusqueda.COSTO }
                         }
-                        Text(
-                            when (preferencia) {
-                                "tiempo"      -> "Optimizando por: menor tiempo de viaje"
-                                "costo"       -> "Optimizando por: menor costo (S/1.30 por combi)"
-                                else -> ""
-                            }, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = BusRed
-                        )
-                        Text("Información adicional (opcional)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
-                        OutlinedTextField(
-                            value = consultaExtra, onValueChange = { consultaExtra = it },
-                            placeholder = { Text("Ej: Quiero pasar por el mercado San Camilo", fontSize = 13.sp, color = BusGray) },
-                            modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BusRed, focusedLabelColor = BusRed, cursorColor = BusRed)
-                        )
                     }
 
                     when (val state = busquedaState) {
-                        is BusquedaState.Loading -> {
+                        is BusquedaState.Calculando -> {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 CircularProgressIndicator(color = BusRed, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
-                                Text("La IA está analizando las rutas...", color = BusGray, fontSize = 14.sp)
+                                Text("Calculando rutas...", color = BusGray, fontSize = 14.sp)
                             }
                         }
-                        is BusquedaState.Success -> {
-                            ResultadoRutaTimeline(rutaParseada, state.respuesta, rutaColores, rutaSentidos, rutaEtiquetas, rutaCombis)
+                        is BusquedaState.Resultados -> {
+                            val opciones = state.opciones
+                            if (opciones.vacia && opciones.completa) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(containerColor = BusLightRed), elevation = CardDefaults.cardElevation(0.dp)
+                                ) {
+                                    Text(
+                                        "No encontramos combis que conecten estos puntos a una distancia caminable. Prueba moviendo los pines a una avenida cercana.",
+                                        fontSize = 13.sp, color = Color(0xFF1A1A1A), modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+                            } else {
+                                SelectorModo(modoVista) { modoVista = it; opcionElegida = 0 }
+                                SelectorOpciones(opcionesVista, opcionElegida) { opcionElegida = it }
+                                if (!opciones.completa) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        CircularProgressIndicator(color = BusGray, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                                        Text("Buscando más opciones...", fontSize = 12.sp, color = BusGray)
+                                    }
+                                }
+                                itinerario?.let { it ->
+                                    ResultadoRutaTimeline(
+                                        TextoItinerario.aRutaParseada(it, nombres, combiDe), "",
+                                        rutaColores, TextoItinerario.sentidos(it), rutaEtiquetas, rutaCombis
+                                    )
+                                }
+                            }
                             atribucionDatos?.let { CreditoFuenteDatos(it) }
                         }
                         is BusquedaState.Error -> {
@@ -436,25 +445,191 @@ fun BusquedaSheet(
                                 Text("Intentar de nuevo", fontWeight = FontWeight.SemiBold)
                             }
                         }
-                        else -> {
+                        is BusquedaState.Idle -> {
                             Button(
                                 onClick = {
-                                    if (origenPunto != null && destinoPunto != null) {
-                                        busquedaViewModel.buscarRutaPorCoordenadas(
-                                            origenLat = origenPunto.lat, origenLng = origenPunto.lng,
-                                            destinoLat = destinoPunto.lat, destinoLng = destinoPunto.lng,
-                                            preferencia = preferencia, consultaExtra = consultaExtra
-                                        )
-                                    }
+                                    if (origenPunto != null && destinoPunto != null) busquedaViewModel.buscarRuta(origenPunto, destinoPunto, modo)
                                 },
                                 modifier = Modifier.fillMaxWidth().height(50.dp), shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = BusRed),
                                 enabled = origenPunto != null && destinoPunto != null
-                            ) { Text("Buscar ruta óptima", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+                            ) { Text("Buscar rutas", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// ── Origen y destino ─────────────────────────────────────────────────────────
+@Composable
+private fun PuntosOrigenDestino(
+    origenPunto: Coordenada?,
+    destinoPunto: Coordenada?,
+    nombreOrigen: UbicacionViewModel.NombrePunto?,
+    nombreDestino: UbicacionViewModel.NombrePunto?,
+    onSeleccionarOrigen: () -> Unit,
+    onSeleccionarDestino: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onSeleccionarOrigen() },
+            shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 4.dp, bottomEnd = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Filled.LocationOn, null, tint = BusGreen, modifier = Modifier.size(22.dp))
+                Column {
+                    Text("ORIGEN", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+                    Text(
+                        if (origenPunto != null) textoPunto(origenPunto, nombreOrigen) else "Toca y mueve el mapa para ubicarlo",
+                        fontSize = 14.sp, color = if (origenPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        Box(modifier = Modifier.padding(start = 28.dp).width(2.dp).height(6.dp).background(Color(0xFFBDBDBD)))
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable { onSeleccionarDestino() },
+            shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 14.dp, bottomEnd = 14.dp),
+            colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Filled.Place, null, tint = BusRed, modifier = Modifier.size(22.dp))
+                Column {
+                    Text("DESTINO", fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+                    Text(
+                        if (destinoPunto != null) textoPunto(destinoPunto, nombreDestino) else "Toca y mueve el mapa para ubicarlo",
+                        fontSize = 14.sp, color = if (destinoPunto != null) Color(0xFF1A1A1A) else BusGray, fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ── Un resultado de «Buscar lugar» ───────────────────────────────────────────
+@Composable
+private fun FilaLugar(lugar: LugarEncontrado, onOrigen: () -> Unit, onDestino: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = BusBg), elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(lugar.nombre, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                if (lugar.detalle.isNotEmpty()) Text(lugar.detalle, fontSize = 11.sp, color = BusGray)
+            }
+            TextButton(onClick = onOrigen, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Origen", color = BusGreen, fontSize = 12.sp) }
+            TextButton(onClick = onDestino, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Destino", color = BusRed, fontSize = 12.sp) }
+        }
+    }
+}
+
+// ── Lo que entendió la IA: candidatos para cada pin ──────────────────────────
+@Composable
+private fun ResultadoInterpretacionVista(
+    estado: InterpretacionState,
+    ubicacionUsuario: Coordenada?,
+    onElegirLugar: (LugarEncontrado, Boolean) -> Unit,
+    onUbicar: (Coordenada?, Coordenada?) -> Unit,
+    onCerrar: () -> Unit
+) {
+    when (estado) {
+        is InterpretacionState.Interpretando -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CircularProgressIndicator(color = BusRed, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+            Text("La IA está leyendo tu consulta...", fontSize = 12.sp, color = BusGray)
+        }
+        is InterpretacionState.Error -> Text(estado.mensaje, fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+        is InterpretacionState.Lista -> {
+            val r = estado.resultado
+            fun primero(p: PuntoInterpretado): Coordenada? = when (p) {
+                is PuntoInterpretado.MiUbicacion -> ubicacionUsuario
+                is PuntoInterpretado.Candidatos -> p.lugares.firstOrNull()?.coordenada
+                else -> null
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8E9)), elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Esto entendí (confirma cada punto en el mapa):", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1A1A1A))
+                    PuntoInterpretadoFila("Origen", r.origen, true, onElegirLugar)
+                    PuntoInterpretadoFila("Destino", r.destino, false, onElegirLugar)
+                    r.avisos.forEach { Text(it, fontSize = 11.sp, color = Color(0xFF8D6E00)) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onUbicar(primero(r.origen), primero(r.destino)) },
+                            colors = ButtonDefaults.buttonColors(containerColor = BusRed),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text("Ubicar en el mapa", fontSize = 13.sp) }
+                        TextButton(onClick = onCerrar) { Text("Cerrar", color = BusGray, fontSize = 13.sp) }
+                    }
+                }
+            }
+        }
+        else -> Unit
+    }
+}
+
+@Composable
+private fun PuntoInterpretadoFila(titulo: String, punto: PuntoInterpretado, esOrigen: Boolean, onElegirLugar: (LugarEncontrado, Boolean) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(titulo.uppercase(), fontSize = 10.sp, color = BusGray, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+        when (punto) {
+            is PuntoInterpretado.NoIndicado -> Text("No lo mencionaste: ubícalo moviendo el mapa.", fontSize = 12.sp, color = BusGray)
+            is PuntoInterpretado.MiUbicacion -> Text("Tu ubicación actual", fontSize = 13.sp, color = Color(0xFF1A1A1A))
+            is PuntoInterpretado.Candidatos -> {
+                if (punto.lugares.isEmpty()) Text("«${punto.texto}»: no encontrado", fontSize = 12.sp, color = BusGray)
+                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    punto.lugares.forEachIndexed { i, lugar ->
+                        AssistChip(
+                            onClick = { onElegirLugar(lugar, esOrigen) },
+                            label = { Text(if (lugar.detalle.isEmpty()) lugar.nombre else "${lugar.nombre} · ${lugar.detalle}", fontSize = 12.sp) },
+                            colors = AssistChipDefaults.assistChipColors(containerColor = if (i == 0) Color.White else BusBg)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Pestañas «Menos tiempo | Menos costo» ────────────────────────────────────
+@Composable
+private fun SelectorModo(modo: ModoBusqueda, onCambio: (ModoBusqueda) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(ModoBusqueda.TIEMPO to "Menos tiempo", ModoBusqueda.COSTO to "Menos costo").forEach { (m, texto) ->
+            val elegido = m == modo
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                    .background(if (elegido) BusRed else BusBg).clickable { onCambio(m) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) { Text(texto, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (elegido) Color.White else Color(0xFF1A1A1A)) }
+        }
+    }
+}
+
+// ── Opciones 1–5 del modo elegido ────────────────────────────────────────────
+@Composable
+private fun SelectorOpciones(opciones: List<Itinerario>, elegida: Int, onElegir: (Int) -> Unit) {
+    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        opciones.forEachIndexed { i, op ->
+            FilterChip(
+                selected = i == elegida,
+                onClick = { onElegir(i) },
+                label = {
+                    Text(
+                        "${i + 1} · ${op.minutosEstimado.roundToInt()} min · ${op.numeroCombis} ${if (op.numeroCombis == 1) "combi" else "combis"}",
+                        fontSize = 12.sp
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = BusLightRed, selectedLabelColor = BusDarkRed)
+            )
         }
     }
 }
@@ -495,7 +670,7 @@ private fun ResultadoRutaTimeline(
         Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(containerColor = BusLightRed), elevation = CardDefaults.cardElevation(0.dp)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("🤖 Recomendación de la IA:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BusRed)
+                Text("Detalle del viaje:", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BusRed)
                 Text(respuestaOriginal, fontSize = 13.sp, color = Color(0xFF1A1A1A))
             }
         }
