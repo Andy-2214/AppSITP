@@ -1,6 +1,8 @@
 package com.sitp.arequipa.domain.repository
 
 import com.sitp.arequipa.domain.model.AtribucionDatos
+import com.sitp.arequipa.domain.model.Coordenada
+import com.sitp.arequipa.domain.model.LugarEncontrado
 
 /**
  * Puerto de dominio para nombres de lugares.
@@ -15,4 +17,11 @@ interface LugaresRepository {
 
     /** Crédito que exige la licencia de la fuente de datos actual, o null si no exige ninguno. */
     suspend fun atribucion(): AtribucionDatos?
+
+    /**
+     * Lugares y calles cuyo nombre coincide con [texto] (sin importar tildes ni mayúsculas), del mejor al
+     * peor. Con [cerca], los empates se resuelven por cercanía. Funciona sin internet. Nunca lanza excepción.
+     * Aquí se sumarán los alias del ADR-003 sin cambiar a quien lo usa.
+     */
+    suspend fun buscarPorNombre(texto: String, cerca: Coordenada? = null, limite: Int = 8): List<LugarEncontrado>
 }
